@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # ── Database ───────────────────────────────────────────────
-    DATABASE_URL: str = f"sqlite+aiosqlite:///{DATA_DIR}/app.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////tmp/app.db" if IS_VERCEL else f"sqlite+aiosqlite:///{DATA_DIR}/app.db"
 
     # ── JWT Auth ───────────────────────────────────────────────
     SECRET_KEY: str = "vihtech-ai-english-learning-secret-key-2024-change-in-production"

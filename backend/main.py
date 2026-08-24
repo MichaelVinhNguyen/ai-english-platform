@@ -41,11 +41,13 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 async def lifespan(app: FastAPI):
     """Startup & shutdown events."""
     print("[START] Khoi dong AI English Learning Platform...")
-    await init_db()
-    print("[OK] Database initialized")
+    try:
+        await init_db()
+        print("[OK] Database initialized")
+    except Exception as e:
+        print(f"[WARN] Database init: {e}")
     print("[WEB] Frontend Ready")
     print(f"[AI] Gemini Model: {settings.GEMINI_MODEL}")
-    print(f"[SERVER] http://{settings.APP_HOST}:{settings.APP_PORT}")
     yield
     print("[STOP] Dung he thong...")
 
