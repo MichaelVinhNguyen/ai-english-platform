@@ -61,6 +61,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.get("/api/health")
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "app": "AI English Learning Platform", "cloud": "ready"}
+
 # ── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
