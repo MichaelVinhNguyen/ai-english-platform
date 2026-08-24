@@ -30,12 +30,13 @@ async def init_db():
         from backend.database import models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
         
-    # Seed default admin user
+    # Seed default admin users
     from sqlalchemy import select
     from backend.database.models import User
     from backend.routers.auth import hash_password
     
     async with AsyncSessionLocal() as session:
+        # VihTech Admin
         result = await session.execute(select(User).where(User.username == "VihTech"))
         admin_user = result.scalar_one_or_none()
         if not admin_user:
@@ -49,7 +50,31 @@ async def init_db():
             )
             session.add(admin_user)
             await session.commit()
-            print("[OK] Admin user 'VihTech' created with default password.")
+            print("[OK] Admin user 'VihTech' created.")
+
+        # Default Admin (admin / admin123)
+        result2 = await session.execute(select(User).where(User.username == "admin"))
+        admin2 = result2.scalar_one_or_none()
+        if not admin2:
+            admin2 = User(
+                email="admin@example.com",
+                username="admin",
+                full_name="Administrator",
+                password_hash=hash_password("admin123"),
+                role="admin",
+                is_active=True
+            )
+            session.add(admin2)
+            await session.commit()
+            print("[OK] Admin user 'admin' created.")
+
+        # Seed rich courses, lessons, vocabulary if empty
+        try:
+            from backend.seed_rich_data import seed_data
+            await seed_data(session)
+            print("[OK] Rich curriculum data initialized.")
+        except Exception as e:
+            print(f"[WARN] Rich data seed: {e}")
 
 
 async def get_db():
