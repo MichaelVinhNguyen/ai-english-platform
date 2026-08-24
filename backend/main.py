@@ -71,7 +71,8 @@ app.add_middleware(
 )
 
 # ── API Routers ───────────────────────────────────────────────────────────────
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
+app.include_router(auth_router, prefix="")
 app.include_router(teacher_router)
 app.include_router(vocab_router)
 app.include_router(quiz_router)

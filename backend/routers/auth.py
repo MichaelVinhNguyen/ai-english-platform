@@ -18,7 +18,7 @@ from backend.database.database import get_db
 from backend.database.models import User
 from backend.database.schemas import UserRegister, UserLogin, Token, UserOut
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
