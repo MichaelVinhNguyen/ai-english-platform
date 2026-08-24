@@ -1,0 +1,192 @@
+"""
+auth.py – Authentication: Register, Login, JWT
+"""
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from pydantic import BaseModel
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+from backend.config import settings
+from backend.database.database import get_db
+from backend.database.models import User
+from backend.database.schemas import UserRegister, UserLogin, Token, UserOut
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+security = HTTPBearer(auto_error=False)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+def create_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode(
+        {"sub": str(user_id), "exp": expire},
+        settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    if credentials:
+        try:
+            payload = jwt.decode(credentials.credentials, settings.SECRET_KEY,
+                                 algorithms=[settings.ALGORITHM])
+            user_id = int(payload.get("sub"))
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                return user
+        except (JWTError, ValueError):
+            pass
+
+    # Fallback to first active user or create default guest/demo user
+    result = await db.execute(select(User).order_by(User.id.asc()))
+    user = result.scalars().first()
+    if user and user.is_active:
+        return user
+
+    demo_user = User(
+        email="learner@vihtech.com",
+        username="VihTechLearner",
+        full_name="Học Viên VihTech",
+        password_hash=hash_password("123456"),
+        xp=100,
+        coins=50,
+        level=1,
+        target_level="B1"
+    )
+    db.add(demo_user)
+    await db.commit()
+    await db.refresh(demo_user)
+    return demo_user
+
+async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
+    return current_user
+
+
+@router.post("/register", response_model=Token)
+async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
+    # Check email
+    r = await db.execute(select(User).where(User.email == data.email))
+    if r.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email đã được sử dụng")
+    # Check username
+    r = await db.execute(select(User).where(User.username == data.username))
+    if r.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Username đã được sử dụng")
+
+    user = User(
+        email=data.email,
+        username=data.username,
+        full_name=data.full_name,
+        password_hash=hash_password(data.password),
+        native_language=data.native_language,
+        role="student",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return Token(access_token=create_token(user.id), user=UserOut.model_validate(user))
+
+
+@router.post("/login", response_model=Token)
+async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import or_
+    r = await db.execute(select(User).where(or_(User.email == data.email, User.username == data.email)))
+    user = r.scalar_one_or_none()
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị khóa")
+
+    # Update last active
+    user.last_study_date = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
+
+    return Token(access_token=create_token(user.id), user=UserOut.model_validate(user))
+
+
+class QuickEmailLogin(BaseModel):
+    email: str
+    full_name: Optional[str] = None
+    target_level: Optional[str] = "B1"
+
+
+@router.post("/quick-email-login", response_model=Token)
+async def quick_email_login(data: QuickEmailLogin, db: AsyncSession = Depends(get_db)):
+    import re
+    clean_email = data.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập định dạng email hợp lệ (ví dụ: name@gmail.com)")
+
+    r = await db.execute(select(User).where(User.email == clean_email))
+    user = r.scalar_one_or_none()
+
+    if user:
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Tài khoản email này đã bị khóa bởi Quản trị viên.")
+        user.last_study_date = datetime.now(timezone.utc)
+        if data.full_name and (not user.full_name or user.full_name == user.username):
+            user.full_name = data.full_name.strip()
+        await db.commit()
+        await db.refresh(user)
+    else:
+        # Auto format pretty full name from email prefix if not given
+        prefix = clean_email.split("@")[0]
+        pretty_parts = [part.capitalize() for part in re.split(r'[\._\-+0-9]+', prefix) if part]
+        pretty_name = data.full_name.strip() if (data.full_name and data.full_name.strip()) else (" ".join(pretty_parts) if pretty_parts else prefix.capitalize())
+
+        # Clean username
+        base_username = re.sub(r'[^a-zA-Z0-9_]', '_', prefix)[:25] or "learner"
+        candidate_username = base_username
+        counter = 1
+        while True:
+            u_check = await db.execute(select(User).where(User.username == candidate_username))
+            if not u_check.scalar_one_or_none():
+                break
+            candidate_username = f"{base_username}_{counter}"
+            counter += 1
+
+        is_admin = clean_email in ["admin@vihtech.com", "admin@vihtech.edu.vn", "admin@gmail.com"] or clean_email.startswith("admin@")
+        user = User(
+            email=clean_email,
+            username=candidate_username,
+            full_name=pretty_name,
+            password_hash=hash_password("vihtech2026"),
+            role="admin" if is_admin else "student",
+            target_level=data.target_level or "B1",
+            xp=120,
+            coins=60,
+            level=1,
+            streak=1,
+            is_active=True,
+            last_study_date=datetime.now(timezone.utc)
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    return Token(access_token=create_token(user.id), user=UserOut.model_validate(user))
+
+
+@router.get("/me", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return UserOut.model_validate(current_user)
+
