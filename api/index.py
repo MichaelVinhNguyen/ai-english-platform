@@ -32,7 +32,6 @@ except Exception as e:
     from fastapi.responses import JSONResponse
     app = FastAPI()
     err_tb = traceback.format_exc()
-    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-    async def catch_import_error(full_path: str = ""):
-        return JSONResponse(status_code=500, content={"error": "Backend import failed", "detail": str(e), "traceback": err_tb})
     handler = app
+
+app = handler
