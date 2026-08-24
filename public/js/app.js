@@ -324,12 +324,24 @@ window.openVocabTabExplain = (kw) => {
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 async function checkAuth() {
   const token = localStorage.getItem('auth_token');
+  const storedUser = localStorage.getItem('user_data');
   if (!token) { showAuthPage(); return; }
+  if (storedUser) {
+    try {
+      state.user = JSON.parse(storedUser);
+      showApp();
+    } catch (e) { }
+  }
   try {
     const user = await api.auth.me();
-    if (user) { state.user = user; showApp(); }
-    else { showAuthPage(); }
-  } catch { showAuthPage(); }
+    if (user) {
+      state.user = user;
+      localStorage.setItem('user_data', JSON.stringify(user));
+      showApp();
+    }
+  } catch {
+    if (!state.user) showAuthPage();
+  }
 }
 
 function showAuthPage() {
