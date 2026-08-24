@@ -11,7 +11,13 @@ load_dotenv()
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent.parent
-DATA_DIR = BASE_DIR / "data"
+IS_VERCEL = bool(os.getenv("VERCEL"))
+
+if IS_VERCEL:
+    DATA_DIR = Path("/tmp/data")
+else:
+    DATA_DIR = BASE_DIR / "data"
+
 MEDIA_DIR = DATA_DIR / "media"
 VOCAB_DIR = DATA_DIR / "vocabulary"
 AUDIO_DIR = MEDIA_DIR / "audio"
@@ -19,7 +25,10 @@ IMAGE_DIR = MEDIA_DIR / "images"
 
 # Ensure directories exist
 for d in [DATA_DIR, MEDIA_DIR, VOCAB_DIR, AUDIO_DIR, IMAGE_DIR]:
-    d.mkdir(parents=True, exist_ok=True)
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
 
 
 class Settings(BaseSettings):

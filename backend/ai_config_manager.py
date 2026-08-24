@@ -118,7 +118,10 @@ def save_ai_config(config_data: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 p["is_active"] = False
 
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(merged, f, indent=2, ensure_ascii=False)
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(merged, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
     return merged
 
