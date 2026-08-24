@@ -77,8 +77,18 @@ async def init_db():
             print(f"[WARN] Rich data seed: {e}")
 
 
+_db_initialized = False
+
 async def get_db():
     """Dependency – yield AsyncSession."""
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            await init_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f"[DB] Auto-init error: {e}")
+            
     async with AsyncSessionLocal() as session:
         try:
             yield session

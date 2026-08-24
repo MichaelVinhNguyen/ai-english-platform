@@ -107,11 +107,19 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import or_
-    r = await db.execute(select(User).where(or_(User.email == data.email, User.username == data.email)))
+    from sqlalchemy import or_, func
+    login_identifier = data.email.strip()
+    r = await db.execute(
+        select(User).where(
+            or_(
+                func.lower(User.email) == login_identifier.lower(),
+                func.lower(User.username) == login_identifier.lower(),
+            )
+        )
+    )
     user = r.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
+        raise HTTPException(status_code=401, detail="Email/Tài khoản hoặc mật khẩu không đúng")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Tài khoản đã bị khóa")
 
