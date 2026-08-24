@@ -16,9 +16,19 @@ const api = {
 
     try {
       const res = await fetch(`${API_BASE}${path}`, options);
-      if (res.status === 401) { api.clearToken(); window.location.reload(); return null; }
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.detail || json.message || 'Có lỗi xảy ra');
+      if (res.status === 401 && path !== '/auth/login' && path !== '/auth/quick-email-login') {
+        api.clearToken();
+        window.location.reload();
+        return null;
+      }
+      const rawText = await res.text();
+      let json = {};
+      try {
+        json = rawText ? JSON.parse(rawText) : {};
+      } catch (parseErr) {
+        json = { detail: rawText || `Lỗi phản hồi máy chủ (${res.status})` };
+      }
+      if (!res.ok) throw new Error(json.detail || json.message || `Lỗi yêu cầu (${res.status})`);
       return json;
     } catch (e) {
       if (e.message === 'Failed to fetch') throw new Error('Không thể kết nối đến máy chủ');

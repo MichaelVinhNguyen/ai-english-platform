@@ -68,27 +68,12 @@ async def init_db():
             await session.commit()
             print("[OK] Admin user 'admin' created.")
 
-        # Seed rich courses, lessons, vocabulary if empty
-        try:
-            from backend.seed_rich_data import seed_data
-            await seed_data(session)
-            print("[OK] Rich curriculum data initialized.")
-        except Exception as e:
-            print(f"[WARN] Rich data seed: {e}")
+        # Admin users created cleanly
+        pass
 
-
-_db_initialized = False
 
 async def get_db():
     """Dependency – yield AsyncSession."""
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            await init_db()
-            _db_initialized = True
-        except Exception as e:
-            print(f"[DB] Auto-init error: {e}")
-            
     async with AsyncSessionLocal() as session:
         try:
             yield session

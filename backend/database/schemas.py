@@ -19,11 +19,24 @@ class UserLogin(BaseModel):
     password: str
 
 class UserOut(BaseModel):
-    id: int; email: str; username: str; full_name: Optional[str]
-    role: str; level: int; xp: int; coins: int; streak: int
-    longest_streak: int; target_level: Optional[str]; daily_goal_xp: int
-    avatar_url: Optional[str]; is_active: bool; created_at: datetime
-    class Config: from_attributes = True
+    id: int
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    role: Optional[str] = "student"
+    level: Optional[int] = 1
+    xp: Optional[int] = 0
+    coins: Optional[int] = 0
+    streak: Optional[int] = 0
+    longest_streak: Optional[int] = 0
+    target_level: Optional[str] = "B1"
+    daily_goal_xp: Optional[int] = 50
+    avatar_url: Optional[str] = None
+    is_active: Optional[bool] = True
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 class Token(BaseModel):
     access_token: str; token_type: str = "bearer"; user: UserOut
