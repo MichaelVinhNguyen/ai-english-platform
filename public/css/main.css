@@ -1642,7 +1642,7 @@ textarea.form-control { resize: vertical; min-height: 120px; }
 }
 
 /* 3D Elevated Card Components */
-.card, .stat-card, .3d-card {
+.card, .stat-card, .card-3d, ._3d-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1652,6 +1652,7 @@ textarea.form-control { resize: vertical; min-height: 120px; }
   position: relative;
   overflow: hidden;
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .card::before, .stat-card::before {
@@ -1677,7 +1678,7 @@ textarea.form-control { resize: vertical; min-height: 120px; }
 }
 
 /* 3D Spherical Icon Containers */
-.stat-icon, .3d-icon-sphere {
+.stat-icon, .icon-sphere-3d, ._3d-icon-sphere {
   width: 54px;
   height: 54px;
   border-radius: 16px;
