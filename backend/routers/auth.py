@@ -4,14 +4,14 @@ auth.py – Authentication: Register, Login, JWT
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import jwt
+from jwt import PyJWTError as JWTError
 
 from backend.config import settings
 from backend.database.database import get_db
