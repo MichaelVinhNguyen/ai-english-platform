@@ -75,6 +75,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Universal Route Normalizer Middleware (Vercel & Local) ──────────────────
+@app.middleware("http")
+async def normalize_api_path_middleware(request, call_next):
+    path = request.url.path
+    if not path.startswith("/api/") and not path.startswith("/css/") and not path.startswith("/js/") and not path.startswith("/assets/") and path not in ["/", "/index.html", "/favicon.ico"]:
+        for prefix in ["level-curriculum", "vocabulary", "quiz", "courses", "admin", "teacher", "grammar", "writing", "speaking", "listening", "reading", "learning-path", "dashboard", "gamification", "community", "auth", "translation"]:
+            if path.startswith(f"/{prefix}"):
+                request.scope["path"] = f"/api{path}"
+                break
+    return await call_next(request)
+
 # ── API Routers ───────────────────────────────────────────────────────────────
 app.include_router(auth_router, prefix="/api")
 app.include_router(auth_router, prefix="")
