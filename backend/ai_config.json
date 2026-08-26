@@ -1,0 +1,10 @@
+{
+  "provider": "gemini",
+  "api_key": "AIzaSyAmw1VHga-G0fp6tOaoQPcmFUsVP6N-8vQ",
+  "base_url": "",
+  "model": "gemini-flash-latest",
+  "tts_engine": "browser-neural",
+  "temperature": 0.7,
+  "max_tokens": 1024,
+  "notes": "Hệ thống hỗ trợ cấu hình động AI Engine cho Gemini, OpenAI, Microsoft 365 Copilot hoặc Custom API."
+}

@@ -1,0 +1,23 @@
+# -*- coding: utf-8 -*-
+"""
+backend/seed_all_levels_four_skill_exams.py – Centralized Registry of 4-Skill Standardized Exams for All Levels
+"""
+from backend.exams import (
+    A1_STANDARDIZED_EXAM_DATA,
+    A2_STANDARDIZED_EXAM_DATA,
+    B1_STANDARDIZED_EXAM_DATA,
+    B2_STANDARDIZED_EXAM_DATA,
+    C1_STANDARDIZED_EXAM_DATA,
+    C2_STANDARDIZED_EXAM_DATA,
+    ALL_LEVELS_FOUR_SKILL_EXAM_DATA
+)
+
+__all__ = [
+    "A1_STANDARDIZED_EXAM_DATA",
+    "A2_STANDARDIZED_EXAM_DATA",
+    "B1_STANDARDIZED_EXAM_DATA",
+    "B2_STANDARDIZED_EXAM_DATA",
+    "C1_STANDARDIZED_EXAM_DATA",
+    "C2_STANDARDIZED_EXAM_DATA",
+    "ALL_LEVELS_FOUR_SKILL_EXAM_DATA"
+]
