@@ -2144,7 +2144,7 @@ async function loadVocab() {
           <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="event.stopPropagation();speakText('${w.word.replace(/'/g, "\\'")}')" title="Phát âm">🔊</button>
         </div>
       </div>`;
-    }).join('') :
+    }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng phù hợp.</div>';
   } catch(e) {
     console.warn('Vocab load info:', e);
     const grid = document.getElementById('vocab-grid');
