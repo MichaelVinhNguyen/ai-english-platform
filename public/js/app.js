@@ -7760,8 +7760,8 @@ window.openInteractiveLessonStudio = (level, moduleId) => {
         </div>
       </div>
 
-      <!-- STUDIO STEPS BAR (8 CHẶNG) -->
-      <div class="lesson-studio-steps" style="overflow-x:auto; display:flex; gap:6px; padding:8px 16px; background:var(--bg-secondary); border-bottom:1px solid var(--border);">
+      <!-- STUDIO STEPS BAR (8 CHẶNG TOÀN DIỆN) -->
+      <div class="lesson-studio-steps" style="overflow-x:auto; display:flex; gap:8px; padding:12px 18px; background:#0f172a; border-bottom:2px solid rgba(234,179,8,0.4); flex-shrink:0;">
         <button id="studio-step-btn-1" class="lesson-step-tab active" onclick="switchStudioStep(1)">
           <span>📖</span> 1. Lý Thuyết
         </button>
