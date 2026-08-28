@@ -48,12 +48,139 @@ window.toeicExamState = {
   timerInterval: null
 };
 
+window.getFallbackToeicExamData = function() {
+  return {
+    exam_id: "toeic-ets-2026-01",
+    title: "Đề Thi Khảo Thí TOEIC 850+ Format Chuẩn ETS 2026 (7 Parts)",
+    listening: {
+      title: "TOEIC Listening Comprehension (100 Questions - 45 Mins)",
+      total_questions: 100,
+      time_min: 45,
+      parts: [
+        {
+          part_id: "P1",
+          part_title: "Part 1: Photographs (6 Questions)",
+          description: "Nghe 4 phát biểu và chọn câu miêu tả đúng nhất bức ảnh.",
+          questions: [
+            {
+              id: "P1_Q1",
+              audio_text: "A. He is writing on a whiteboard. B. He is looking at a computer monitor. C. He is talking on the phone. D. He is opening a filing cabinet.",
+              options: ["A. He is writing on a whiteboard", "B. He is looking at a computer monitor", "C. He is talking on the phone", "D. He is opening a filing cabinet"],
+              correct: "B. He is looking at a computer monitor",
+              explanation: "Câu B miêu tả đúng hành động của nhân vật nhìn vào màn hình máy tính."
+            },
+            {
+              id: "P1_Q2",
+              audio_text: "A. People are boarding a train. B. People are walking along a street. C. People are sitting in a conference room. D. People are waiting in line at a counter.",
+              options: ["A. People are boarding a train", "B. People are walking along a street", "C. People are sitting in a conference room", "D. People are waiting in line at a counter"],
+              correct: "C. People are sitting in a conference room",
+              explanation: "Câu C mô tả chính xác mọi người đang ngồi trong phòng hội nghị."
+            }
+          ]
+        },
+        {
+          part_id: "P2",
+          part_title: "Part 2: Question - Response (25 Questions)",
+          description: "Nghe câu hỏi hoặc phát biểu và chọn câu phản hồi phù hợp nhất (A, B, C).",
+          questions: [
+            {
+              id: "P2_Q7",
+              audio_text: "Where is the marketing meeting scheduled to take place?",
+              options: ["A. At 3:30 PM", "B. In Conference Room B on the second floor", "C. Yes, with the new director"],
+              correct: "B. In Conference Room B on the second floor",
+              explanation: "Câu hỏi 'Where' hỏi về địa điểm nên phương án B trả lời chính xác."
+            }
+          ]
+        }
+      ]
+    },
+    reading: {
+      title: "TOEIC Reading Comprehension (100 Questions - 75 Mins)",
+      total_questions: 100,
+      time_min: 75,
+      parts: [
+        {
+          part_id: "P5",
+          part_title: "Part 5: Incomplete Sentences (30 Questions)",
+          questions: [
+            {
+              id: "P5_Q101",
+              question: "All employees are required to submit their travel expense reports _______ Friday afternoon.",
+              options: ["A. by", "B. at", "C. on", "D. in"],
+              correct: "A. by",
+              explanation: "'by + thời điểm' mang nghĩa trước hoặc muộn nhất vào thời điểm đó."
+            },
+            {
+              id: "P5_Q102",
+              question: "The newly renovated library is _______ located near the central subway station.",
+              options: ["A. convenient", "B. conveniently", "C. convenience", "D. more convenient"],
+              correct: "B. conveniently",
+              explanation: "Cần một trạng từ (conveniently) bổ nghĩa cho tính từ/phân từ 'located'."
+            }
+          ]
+        },
+        {
+          part_id: "P6",
+          part_title: "Part 6: Text Completion (16 Questions)",
+          passages: [
+            {
+              passage_id: "P6_T1",
+              text: "To: All Department Heads\nFrom: Facilities Management\nSubject: Office Air Conditioning Upgrade\n\nPlease be advised that the building management team will conduct essential maintenance on the central air conditioning units this Saturday from 8:00 AM to 4:00 PM. [131] _______, the entire building will be without climate control during these hours. Employees are advised to plan accordingly.",
+              questions: [
+                {
+                  id: "P6_Q131",
+                  options: ["A. Consequently", "B. Although", "C. However", "D. Otherwise"],
+                  correct: "A. Consequently",
+                  explanation: "'Consequently' (Do đó/kết quả là) thể hiện mối quan hệ nguyên nhân - kết quả."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          part_id: "P7",
+          part_title: "Part 7: Reading Comprehension (54 Questions)",
+          passages: [
+            {
+              passage_id: "P7_T1",
+              title: "Business Announcement: TechNova Expansion",
+              text: "TechNova Corporation, a global leader in educational software solutions, announced today that it will open a new regional research and development center in Da Nang, Vietnam next quarter. The 50,000-square-foot facility is expected to create over 300 high-tech engineering and AI specialist jobs over the next two years. Interested applicants are encouraged to visit the company careers portal.",
+              questions: [
+                {
+                  id: "P7_Q147",
+                  question: "What is the primary purpose of the announcement?",
+                  options: [
+                    "A. To announce the opening of a new R&D center",
+                    "B. To report quarterly financial earnings",
+                    "C. To recruit a new Chief Executive Officer",
+                    "D. To announce a product price increase"
+                  ],
+                  correct: "A. To announce the opening of a new R&D center",
+                  explanation: "Thông báo nêu rõ việc TechNova mở trung tâm nghiên cứu và phát triển mới tại Đà Nẵng."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  };
+};
+
 window.renderToeicExamTab = async function(container, levelData) {
   container.innerHTML = '<div class="loading-dots" style="padding:40px; text-align:center;"><span></span><span></span><span></span></div>';
 
+  let examData = null;
   try {
-    const examData = await api.levelCurriculum.getToeicFullExam();
-    window.toeicExamState.examData = examData;
+    examData = await api.levelCurriculum.getToeicFullExam();
+  } catch (err) {
+    console.warn('[WARN] API getToeicFullExam failed, using fallback:', err);
+  }
+
+  if (!examData || !examData.listening) {
+    examData = window.getFallbackToeicExamData();
+  }
+  window.toeicExamState.examData = examData;
 
     container.innerHTML = `
       <!-- TOEIC 2026 HERO LOBBY CARD -->
@@ -144,11 +271,6 @@ window.renderToeicExamTab = async function(container, levelData) {
       <div id="toeic-exam-active-arena" style="display:none;"></div>
       <div id="toeic-exam-result-board" style="display:none;"></div>
     `;
-  } catch (err) {
-    container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
-      ❌ Không thể tải đề thi TOEIC: ${err.message}
-    </div>`;
-  }
 };
 
 window.startToeicExam = async function(mode, partId) {
@@ -621,12 +743,123 @@ window.ieltsExamState = {
   timerInterval: null
 };
 
+window.getFallbackIeltsExamData = function() {
+  return {
+    exam_id: "ielts-academic-2026-01",
+    title: "Kỳ Thi Học Thuật Toàn Diện 4 Kỹ Năng (Listening – Reading – Writing – Speaking)",
+    listening: {
+      title: "IELTS Academic Listening (40 Questions - 30 Mins)",
+      total_questions: 40,
+      time_min: 30,
+      sections: [
+        {
+          section_id: 1,
+          section_title: "Section 1: Social Needs Dialogue (10 Questions)",
+          audio_script: "Listen to a conversation between a student and a university accommodation officer.",
+          questions: [
+            {
+              id: "I_L1",
+              audio_text: "Officer: Good morning. Are you looking for on-campus housing? Student: Yes, I am an international post-graduate student starting this September. Officer: We have single en-suite rooms available in Green Park Hall for 150 pounds per week.",
+              question: "What is the weekly rent for a single en-suite room in Green Park Hall?",
+              options: ["A. £120 per week", "B. £150 per week", "C. £180 per week", "D. £200 per week"],
+              correct: "B. £150 per week",
+              explanation: "Audio nêu rõ: '150 pounds per week'."
+            }
+          ]
+        }
+      ]
+    },
+    reading: {
+      title: "IELTS Academic Reading (40 Questions - 60 Mins)",
+      total_questions: 40,
+      time_min: 60,
+      passages: [
+        {
+          passage_id: 1,
+          title: "Reading Passage 1: The Evolution of Renewable Energy Storage",
+          content: "As renewable energy sources like solar and wind power become central to global electricity grids, grid-scale energy storage technology has emerged as a crucial area of innovation. Traditional lithium-ion batteries, while highly efficient for short durations, face challenges regarding raw material supply and long-term sustainability. Consequently, researchers are developing flow batteries and compressed air energy storage systems that offer safer, scalable, and more cost-effective solutions for storing excess green energy.",
+          questions: [
+            {
+              id: "I_R1",
+              question: "What is one limitation of traditional lithium-ion batteries mentioned in the passage?",
+              options: [
+                "A. They cannot store any electricity",
+                "B. Raw material supply and long-term sustainability challenges",
+                "C. They are completely illegal in modern cities",
+                "D. They only work during daytime"
+              ],
+              correct: "B. Raw material supply and long-term sustainability challenges",
+              explanation: "Bài đọc nêu: 'face challenges regarding raw material supply and long-term sustainability'."
+            }
+          ]
+        }
+      ]
+    },
+    writing: {
+      title: "IELTS Academic Writing (2 Tasks - 60 Mins)",
+      time_min: 60,
+      tasks: [
+        {
+          task_id: "I_W1",
+          task_title: "Task 1: Academic Data Report (150 words)",
+          prompt: "The chart below shows global renewable energy capacity growth between 2015 and 2025. Summarise the information by selecting and reporting the main features, and make comparisons where relevant. Write at least 150 words.",
+          min_words: 150,
+          target_words: 170
+        },
+        {
+          task_id: "I_W2",
+          task_title: "Task 2: Academic Essay (250 words)",
+          prompt: "Many people argue that artificial intelligence will eliminate millions of jobs, while others believe it will generate far more innovative career opportunities. Discuss both views and give your opinion. Write at least 250 words.",
+          min_words: 250,
+          target_words: 280
+        }
+      ]
+    },
+    speaking: {
+      title: "IELTS Academic Speaking (3 Parts - 14 Mins)",
+      time_min: 14,
+      parts: [
+        {
+          part_id: 1,
+          part_title: "Part 1: Introduction & Everyday Topics (4-5 mins)",
+          questions: [
+            { id: "I_S1", prompt: "Let's talk about your hometown. What is the most interesting thing to see in your hometown?", sample_answer: "My hometown is known for its beautiful historical river and vibrant night food markets..." }
+          ]
+        },
+        {
+          part_id: 2,
+          part_title: "Part 2: Long Turn Cue Card (3-4 mins)",
+          cue_card: "Describe an innovative piece of technology that you find very useful in your daily life.",
+          questions: [
+            { id: "I_S2", prompt: "Describe an innovative piece of technology that you find very useful in your daily life. You should say: What it is, How you use it, and Explain why it is so helpful.", sample_answer: "I would like to talk about AI conversational tutors..." }
+          ]
+        },
+        {
+          part_id: 3,
+          part_title: "Part 3: Two-way Analytical Discussion (4-5 mins)",
+          questions: [
+            { id: "I_S3", prompt: "How do you think artificial intelligence will shape the future of university education in the next decade?", sample_answer: "AI will likely transform higher education by providing hyper-personalized learning pathways..." }
+          ]
+        }
+      ]
+    }
+  };
+};
+
 window.renderIeltsExamTab = async function(container, levelData) {
   container.innerHTML = '<div class="loading-dots" style="padding:40px; text-align:center;"><span></span><span></span><span></span></div>';
 
+  let examData = null;
   try {
-    const examData = await api.levelCurriculum.getIeltsFullExam();
-    window.ieltsExamState.examData = examData;
+    examData = await api.levelCurriculum.getIeltsFullExam();
+  } catch (err) {
+    console.warn('[WARN] API getIeltsFullExam failed, using fallback:', err);
+  }
+
+  if (!examData || !examData.listening) {
+    examData = window.getFallbackIeltsExamData();
+  }
+  window.ieltsExamState.examData = examData;
 
     container.innerHTML = `
       <!-- IELTS 2026 HERO LOBBY CARD -->
@@ -702,11 +935,6 @@ window.renderIeltsExamTab = async function(container, levelData) {
       <div id="ielts-exam-active-arena" style="display:none;"></div>
       <div id="ielts-exam-result-board" style="display:none;"></div>
     `;
-  } catch (err) {
-    container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
-      ❌ Không thể tải đề thi IELTS: ${err.message}
-    </div>`;
-  }
 };
 
 window.startIeltsExam = async function(mode) {

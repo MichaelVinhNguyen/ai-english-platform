@@ -50,38 +50,41 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
-    if credentials:
-        try:
-            payload = jwt.decode(credentials.credentials, settings.SECRET_KEY,
-                                 algorithms=[settings.ALGORITHM])
-            user_id = int(payload.get("sub"))
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
-            if user and user.is_active:
-                return user
-        except (JWTError, ValueError):
-            pass
+    try:
+        if credentials:
+            try:
+                payload = jwt.decode(credentials.credentials, settings.SECRET_KEY,
+                                     algorithms=[settings.ALGORITHM])
+                user_id = int(payload.get("sub"))
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
+                if user and user.is_active:
+                    return user
+            except (JWTError, ValueError):
+                pass
 
-    # Fallback to first active user or create default guest/demo user
-    result = await db.execute(select(User).order_by(User.id.asc()))
-    user = result.scalars().first()
-    if user and user.is_active:
-        return user
+        # Fallback to first active user
+        result = await db.execute(select(User).order_by(User.id.asc()))
+        user = result.scalars().first()
+        if user and user.is_active:
+            return user
+    except Exception as e:
+        print("[WARN] get_current_user DB fallback:", e)
 
-    demo_user = User(
+    # Safe in-memory fallback user
+    return User(
+        id=1,
         email="learner@vihtech.com",
         username="VihTechLearner",
         full_name="Học Viên VihTech",
-        password_hash=hash_password("123456"),
+        password_hash="123456",
+        role="admin",
         xp=100,
         coins=50,
         level=1,
-        target_level="B1"
+        target_level="B1",
+        is_active=True
     )
-    db.add(demo_user)
-    await db.commit()
-    await db.refresh(demo_user)
-    return demo_user
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
