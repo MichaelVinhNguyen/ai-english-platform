@@ -755,277 +755,299 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-// ── DASHBOARD VIEW PRO 2026 (ULTRA-RICH COMMERCIAL LEARNING HUB) ─────────────
+// ── DASHBOARD VIEW PRO 2026 (MOTIONSITES.AI LUXURY LEARNING HUB) ─────────────
 registerView('dashboard', () => `
-  <div class="dashboard-view" style="display: flex; flex-direction: column; gap: 22px;">
+  <div class="dashboard-view" style="display: flex; flex-direction: column; gap: 28px;">
     
-    <!-- 1. HERO CEFR ROADMAP & AI DAILY RECOMMENDATION BANNER -->
-    <div style="background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 50%, #f0fdf4 100%); border: 1.5px solid rgba(199, 210, 254, 0.8); border-radius: 20px; padding: 24px 28px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.06); display: flex; flex-direction: column; gap: 18px;">
+    <!-- 1. MOTIONSITES HERO SHOWCASE -->
+    <div class="motion-hero-section">
+      <div class="motion-mesh-glow"></div>
       
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-        <div style="display:flex; align-items:center; gap:16px;">
-          <div style="width:52px; height:52px; border-radius:16px; background:linear-gradient(135deg, #6366f1, #0284c7); color:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; box-shadow:0 4px 14px rgba(2,132,199,0.35);">
-            🗺️
-          </div>
-          <div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <h2 style="font-size:20px; font-weight:800; color:#0f172a; margin:0;">LỘ TRÌNH HỌC TẬP THÔNG MINH AI</h2>
-              <span style="background:rgba(99,102,241,0.12); color:#4f46e5; font-weight:800; font-size:11px; padding:3px 8px; border-radius:20px; border:1px solid rgba(99,102,241,0.25);">CEFR 2026</span>
-            </div>
-            <p style="font-size:13.5px; color:#475569; margin-top:4px; max-width:650px; line-height:1.5;">
-              Hệ thống hoạch định lộ trình cá nhân hóa 4 kỹ năng (Nghe, Nói, Đọc, Viết) + Từ vựng & Ngữ pháp từ A1 đến C2. Chọn cấp độ mục tiêu để AI tối ưu hóa lộ trình dành riêng cho bạn.
-            </p>
-          </div>
+      <div style="position:relative; z-index:2; max-width:860px;">
+        <div class="motion-glow-badge">
+          <span>✨</span> NỀN TẢNG HỌC TIẾNG ANH THẾ HỆ MỚI • 2026 AI OMNI-METHOD
         </div>
-
-        <div style="display:flex; align-items:center; gap:10px;">
-          <button class="btn btn-primary" onclick="navigate('levelCurriculum')" style="background:linear-gradient(135deg, #6366f1 0%, #0284c7 100%); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:14px; border:none; box-shadow:0 4px 14px rgba(2,132,199,0.35); cursor:pointer; display:flex; align-items:center; gap:6px;">
-            🎯 Vào Lớp Học Cấp Độ
-          </button>
-          <button class="btn btn-secondary" onclick="navigate('teacher')" style="background:#ffffff; color:#334155; font-weight:700; font-size:13.5px; padding:10px 18px; border-radius:14px; border:1px solid #cbd5e1; box-shadow:0 2px 6px rgba(0,0,0,0.04); cursor:pointer; display:flex; align-items:center; gap:6px;">
-            🤖 Đàm Thoại AI 1-on-1
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Level Pills Strip (Matching Screenshot) -->
-      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:12px; border-top:1px solid rgba(199, 210, 254, 0.6);">
-        <span style="font-size:11.5px; font-weight:800; color:#d97706; text-transform:uppercase; letter-spacing:0.5px; margin-right:6px;">⚡ Chọn Nhanh Cấp Độ Mục Tiêu:</span>
         
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">🌱 A1 Starter</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">🚀 A2 Elementary</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-sm" style="background:linear-gradient(135deg, #6366f1 0%, #0284c7 100%); color:#ffffff; border-radius:20px; font-weight:800; font-size:12px; padding:5px 16px; border:none; box-shadow:0 4px 12px rgba(2,132,199,0.35);">🔥 B1 Intermediate</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">💎 B2 Upper-Inter</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">👑 C1 Mastery</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">📊 TOEIC 850+</button>
-        <button onclick="navigate('levelCurriculum')" class="btn btn-ghost btn-sm" style="background:#ffffff; border:1px solid #e2e8f0; color:#334155; border-radius:20px; font-weight:700; font-size:12px; padding:5px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">🎓 IELTS 7.5+</button>
-      </div>
+        <h1 class="motion-title-gradient">
+          Chinh Phục Tiếng Anh Toàn Diện Cùng AI Teacher 3D & Khảo Thí Chuẩn Hóa
+        </h1>
+        
+        <p style="font-size:15px; color:#cbd5e1; line-height:1.7; margin-bottom:26px; max-width:740px;">
+          Hệ sinh thái học tập đa giác quan tích hợp trí nhớ giãn cách <b>SRS SM-2</b>, phòng hội thoại AI 3D thời gian thực với WebCam biểu cảm, phân tích ngữ âm <b>IPA Mic</b> và luyện đề thi <b>CEFR A1-C2, TOEIC 850+, IELTS 8.0+</b> thực chiến.
+        </p>
 
-    </div>
-
-    <!-- 2. STAT CARDS (4 MODERN LUXURY GLASS CARDS) -->
-    <div class="grid grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;">
-      
-      <!-- Card 1: Tổng XP -->
-      <div class="stat-card-luxury" style="--card-accent-grad: linear-gradient(90deg, #7c3aed, #a855f7); --card-glow: rgba(124, 58, 237, 0.15); --card-accent-border: rgba(124, 58, 237, 0.3);">
-        <div class="stat-card-icon-3d" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color:#ffffff; --icon-shadow: rgba(124, 58, 237, 0.3);">
-          ⚡
-        </div>
-        <div style="flex:1;">
-          <div class="stat-card-val" id="stat-xp-val">0</div>
-          <div class="stat-card-label">Tổng XP Tích Lũy</div>
-          <div class="stat-card-subtag" id="stat-level-sub" style="background: rgba(124, 58, 237, 0.08); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.2);">
-            <span>🏅</span> Level 1 Bronze
+        <!-- CTA BUTTONS & LIVE WAVE -->
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:10px;">
+          <button class="btn-motion-primary" onclick="navigate('levelCurriculum')">
+            <span>🚀</span> Bắt Đầu Học Ngay (10 Cấp Độ)
+          </button>
+          <button class="btn-motion-glass" onclick="navigate('speaking')">
+            <span>🤖</span> Thử Giọng Cùng Giáo Viên AI 3D
+          </button>
+          
+          <div class="motion-voice-visualizer">
+            <span style="font-size:11px; font-weight:800; color:#38bdf8; margin-right:4px;">LIVE AI VOICE:</span>
+            <div class="motion-voice-bar"></div>
+            <div class="motion-voice-bar"></div>
+            <div class="motion-voice-bar"></div>
+            <div class="motion-voice-bar"></div>
+            <div class="motion-voice-bar"></div>
+            <div class="motion-voice-bar"></div>
           </div>
         </div>
       </div>
 
-      <!-- Card 2: Streak -->
-      <div class="stat-card-luxury" style="--card-accent-grad: linear-gradient(90deg, #f97316, #ef4444); --card-glow: rgba(249, 115, 22, 0.15); --card-accent-border: rgba(249, 115, 22, 0.3);">
-        <div class="stat-card-icon-3d" style="background: linear-gradient(135deg, #fb923c, #ea580c); color:#ffffff; --icon-shadow: rgba(234, 88, 12, 0.3);">
-          🔥
+      <!-- STATS TICKER ROW -->
+      <div class="motion-stat-ticker">
+        <div class="motion-stat-box">
+          <div class="motion-stat-num" id="stat-xp-val">0</div>
+          <div class="motion-stat-lbl">⚡ Tổng XP Tích Lũy</div>
         </div>
-        <div style="flex:1;">
-          <div class="stat-card-val" id="stat-streak-val">0 ngày</div>
-          <div class="stat-card-label">Chuỗi Học Liên Tục</div>
-          <div class="stat-card-subtag" style="background: rgba(249, 115, 22, 0.08); color: #ea580c; border: 1px solid rgba(249, 115, 22, 0.2);">
-            <span>⚡</span> Duy trì ngọn lửa!
-          </div>
+        <div class="motion-stat-box">
+          <div class="motion-stat-num" id="stat-streak-val">0 ngày</div>
+          <div class="motion-stat-lbl">🔥 Chuỗi Học Liên Tục</div>
         </div>
-      </div>
-
-      <!-- Card 3: Từ đã học -->
-      <div class="stat-card-luxury" style="--card-accent-grad: linear-gradient(90deg, #10b981, #06b6d4); --card-glow: rgba(16, 185, 129, 0.15); --card-accent-border: rgba(16, 185, 129, 0.3);">
-        <div class="stat-card-icon-3d" style="background: linear-gradient(135deg, #34d399, #059669); color:#ffffff; --icon-shadow: rgba(5, 150, 105, 0.3);">
-          📚
+        <div class="motion-stat-box">
+          <div class="motion-stat-num" id="stat-vocab-val">13,973+</div>
+          <div class="motion-stat-lbl">📚 Từ Vựng Oxford / Cam</div>
         </div>
-        <div style="flex:1;">
-          <div class="stat-card-val" id="stat-vocab-val">0</div>
-          <div class="stat-card-label">Từ Vựng Đã Học</div>
-          <div class="stat-card-subtag" id="stat-due-sub" style="background: rgba(16, 185, 129, 0.08); color: #059669; border: 1px solid rgba(16, 185, 129, 0.2);">
-            <span>🔄</span> 1 từ cần ôn SRS
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 4: Thời gian học -->
-      <div class="stat-card-luxury" style="--card-accent-grad: linear-gradient(90deg, #0284c7, #3b82f6); --card-glow: rgba(2, 132, 199, 0.15); --card-accent-border: rgba(2, 132, 199, 0.3);">
-        <div class="stat-card-icon-3d" style="background: linear-gradient(135deg, #38bdf8, #0284c7); color:#ffffff; --icon-shadow: rgba(2, 132, 199, 0.3);">
-          ⏱️
-        </div>
-        <div style="flex:1;">
-          <div class="stat-card-val" id="stat-time-val">0 phút</div>
-          <div class="stat-card-label">Thời Gian Luyện Tập</div>
-          <div class="stat-card-subtag" style="background: rgba(2, 132, 199, 0.08); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.2);">
-            <span>🎯</span> Mục tiêu 15p/ngày
-          </div>
+        <div class="motion-stat-box">
+          <div class="motion-stat-num" style="color:#10b981;">30 Đề</div>
+          <div class="motion-stat-lbl">🏛️ Khảo Thí ETS & IELTS</div>
         </div>
       </div>
     </div>
 
-    <!-- 3. 4 QUICK ACTION HUBS (PHÒNG LUYỆN TẬP CHUYÊN SÂU 2026) -->
-    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
-      
-      <div onclick="navigate('levelCurriculum')" class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; cursor:pointer; transition:all 0.2s ease; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#6366f1';" onmouseout="this.style.transform='none'; this.style.borderColor='#e2e8f0';">
-        <div style="font-size:24px; margin-bottom:10px;">🎯</div>
-        <div style="font-weight:800; font-size:14px; color:#0f172a;">10 Khóa Học Cấp Độ</div>
-        <div style="font-size:12px; color:#64748b; margin-top:4px;">A1 - C2, IELTS 7.5+, TOEIC</div>
-        <div style="margin-top:12px; font-size:12px; font-weight:700; color:#4f46e5;">Bắt đầu học →</div>
+    <!-- 2. BENTO GRID ARCHITECTURE (6 CORE SUPERPOWER MODULES) -->
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+        <div>
+          <h2 style="font-family:'Outfit',sans-serif; font-size:22px; font-weight:800; color:var(--text-primary); margin:0;">
+            💎 Hệ Sinh Thái Học Tập Đột Phá 2026
+          </h2>
+          <p style="font-size:13px; color:var(--text-secondary); margin:3px 0 0 0;">
+            6 phân hệ công nghệ cao kết hợp đồng bộ nâng cao phản xạ & kỹ năng thực chiến
+          </p>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('courses')" style="color:var(--accent-primary); font-weight:700;">Xem tất cả khóa học →</button>
       </div>
 
-      <div onclick="navigate('teacher')" class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; cursor:pointer; transition:all 0.2s ease; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#0284c7';" onmouseout="this.style.transform='none'; this.style.borderColor='#e2e8f0';">
-        <div style="font-size:24px; margin-bottom:10px;">🤖</div>
-        <div style="font-weight:800; font-size:14px; color:#0f172a;">Giáo Viên AI 1-on-1</div>
-        <div style="font-size:12px; color:#64748b; margin-top:4px;">Ms. Emma (Oxford) & Mr. Alex</div>
-        <div style="margin-top:12px; font-size:12px; font-weight:700; color:#0284c7;">Gọi thoại Live →</div>
-      </div>
+      <div class="motion-bento-grid">
+        
+        <!-- Bento 1: 8-Stage Omni Method (Span 8) -->
+        <div class="motion-bento-card span-8" style="background:linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(30,27,75,0.85) 100%); border-color:rgba(124,58,237,0.4);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div class="bento-icon-wrapper" style="background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#ffffff;">
+                🎯
+              </div>
+              <span class="bento-tag" style="background:rgba(124,58,237,0.2); color:#c084fc; border:1px solid rgba(168,85,247,0.4);">
+                OMNI-METHOD 8 CHẶNG
+              </span>
+            </div>
+            <div class="bento-title">Học Đa Giác Quan Toàn Diện (Lý Thuyết → Mini-Quiz)</div>
+            <div class="bento-desc">
+              Mỗi bài học được tổ chức qua 8 chặng tương tác chuyên sâu: <b>1. Lý Thuyết • 2. Từ Vựng & Flashcard • 3. Ngữ Pháp • 4. Luyện Nghe • 5. Luyện Nói Mic AI • 6. Luyện Viết • 7. Hội Thoại Roleplay • 8. Mini-Quiz & Nhận XP</b>.
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:12px; color:#cbd5e1;">✨ 48 Bài học thiết kế độc quyền</div>
+            <button class="btn btn-sm btn-primary" onclick="navigate('courses')" style="background:linear-gradient(135deg, #7c3aed, #4f46e5); border:none; font-weight:800; border-radius:12px; padding:6px 18px;">
+              Khám Phá Studio →
+            </button>
+          </div>
+        </div>
 
-      <div onclick="navigate('pronunciationLab')" class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; cursor:pointer; transition:all 0.2s ease; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#10b981';" onmouseout="this.style.transform='none'; this.style.borderColor='#e2e8f0';">
-        <div style="font-size:24px; margin-bottom:10px;">🔬</div>
-        <div style="font-weight:800; font-size:14px; color:#0f172a;">Lab Phát Âm & Podcast</div>
-        <div style="font-size:12px; color:#64748b; margin-top:4px;">Chấm điểm IPA & Sóng âm</div>
-        <div style="margin-top:12px; font-size:12px; font-weight:700; color:#10b981;">Luyện phát âm →</div>
-      </div>
+        <!-- Bento 2: 3D AI Teacher (Span 4) -->
+        <div class="motion-bento-card span-4" style="background:linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(8,51,68,0.85) 100%); border-color:rgba(6,182,212,0.4);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div class="bento-icon-wrapper" style="background:linear-gradient(135deg, #06b6d4, #0284c7); color:#ffffff;">
+                🤖
+              </div>
+              <span class="bento-tag" style="background:rgba(6,182,212,0.2); color:#38bdf8; border:1px solid rgba(56,189,248,0.4);">
+                3D VIRTUAL TUTOR
+              </span>
+            </div>
+            <div class="bento-title">Giáo Viên AI 3D Realtime Voice</div>
+            <div class="bento-desc">
+              Hội thoại biểu cảm cùng 3 Persona Ms. Emma (Oxford), Mr. Alex & Ms. Chloe với WebCam người học.
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:12px; color:#38bdf8;">🟢 Tương tác thời gian thực</div>
+            <button class="btn btn-sm" onclick="navigate('teacher')" style="background:#06b6d4; color:#000; font-weight:800; border-radius:12px; padding:6px 16px; border:none;">
+              Vào Phòng AI →
+            </button>
+          </div>
+        </div>
 
-      <div onclick="navigate('flashcards')" class="card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:18px; cursor:pointer; transition:all 0.2s ease; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-3px)'; this.style.borderColor='#f59e0b';" onmouseout="this.style.transform='none'; this.style.borderColor='#e2e8f0';">
-        <div style="font-size:24px; margin-bottom:10px;">🃏</div>
-        <div style="font-weight:800; font-size:14px; color:#0f172a;">Flashcards Anki SRS</div>
-        <div style="font-size:12px; color:#64748b; margin-top:4px;">Ghi nhớ vĩnh viễn thuật toán SRS</div>
-        <div style="margin-top:12px; font-size:12px; font-weight:700; color:#d97706;">Ôn thẻ ngay →</div>
-      </div>
+        <!-- Bento 3: Flashcard Anki SRS (Span 4) -->
+        <div class="motion-bento-card span-4" style="background:linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(6,78,59,0.85) 100%); border-color:rgba(16,185,129,0.4);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div class="bento-icon-wrapper" style="background:linear-gradient(135deg, #10b981, #059669); color:#ffffff;">
+                📚
+              </div>
+              <span class="bento-tag" style="background:rgba(16,185,129,0.2); color:#4ade80; border:1px solid rgba(74,222,128,0.4);">
+                SRS SM-2 ALGORITHM
+              </span>
+            </div>
+            <div class="bento-title">Kho 13,973+ Từ Vựng & Anki</div>
+            <div class="bento-desc">
+              Trí nhớ giãn cách SuperMemo-2, phân loại Word Family, Collocations, Phrasal Verbs & Audio chuẩn IPA.
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:12px; color:#4ade80;" id="stat-due-sub">🔄 1 từ cần ôn hôm nay</div>
+            <button class="btn btn-sm" onclick="navigate('vocabulary')" style="background:#10b981; color:#fff; font-weight:800; border-radius:12px; padding:6px 16px; border:none;">
+              Ôn Thẻ SRS →
+            </button>
+          </div>
+        </div>
 
+        <!-- Bento 4: Standardized Exam Suite (Span 4) -->
+        <div class="motion-bento-card span-4" style="background:linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(120,53,15,0.85) 100%); border-color:rgba(245,158,11,0.4);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div class="bento-icon-wrapper" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#ffffff;">
+                🏛️
+              </div>
+              <span class="bento-tag" style="background:rgba(245,158,11,0.2); color:#facc15; border:1px solid rgba(250,204,21,0.4);">
+                STANDARDIZED EXAM
+              </span>
+            </div>
+            <div class="bento-title">Khảo Thí A1-C2, TOEIC & IELTS</div>
+            <div class="bento-desc">
+              Phòng thi 4 kỹ năng chuẩn ETS 990 & Cambridge 9.0 với AI Examiner chấm phát âm & cấp chứng chỉ số.
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:12px; color:#facc15;">🏆 30 Đề thực chiến 2026</div>
+            <button class="btn btn-sm" onclick="navigate('levelCurriculum')" style="background:#f59e0b; color:#000; font-weight:800; border-radius:12px; padding:6px 16px; border:none;">
+              Vào Thi Thử →
+            </button>
+          </div>
+        </div>
+
+        <!-- Bento 5: NLP Writing & Mic Speech (Span 4) -->
+        <div class="motion-bento-card span-4" style="background:linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(131,24,67,0.85) 100%); border-color:rgba(236,72,153,0.4);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div class="bento-icon-wrapper" style="background:linear-gradient(135deg, #ec4899, #be185d); color:#ffffff;">
+                ✍️
+              </div>
+              <span class="bento-tag" style="background:rgba(236,72,153,0.2); color:#f472b6; border:1px solid rgba(244,114,182,0.4);">
+                NLP & SPEECH LAB
+              </span>
+            </div>
+            <div class="bento-title">Writing NLP & Mic Chấm Phát Âm</div>
+            <div class="bento-desc">
+              Chấm điểm TTR phong phú từ vựng, thang đo Flesch Readability và phòng phân tích sóng âm IPA.
+            </div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:12px; color:#f472b6;">🔬 Phân tích thời gian thực</div>
+            <button class="btn btn-sm" onclick="navigate('writing')" style="background:#ec4899; color:#fff; font-weight:800; border-radius:12px; padding:6px 16px; border:none;">
+              Luyện Viết AI →
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <!-- 4. MIDDLE TWO COLUMNS: SKILL PROGRESS & DAILY QUESTS -->
+    <!-- 3. CEFR 10-TRACK LEARNING MATRIX EXPLORER -->
+    <div class="card" style="background:rgba(15,23,42,0.85); border:1.5px solid rgba(124,58,237,0.3); border-radius:22px; padding:24px; backdrop-filter:blur(16px);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:22px;">🗺️</span>
+          <div>
+            <div style="font-family:'Outfit',sans-serif; font-size:18px; font-weight:800; color:#fff;">
+              Ma Trận 10 Lộ Trình Chuẩn Hóa Quốc Tế
+            </div>
+            <div style="font-size:12px; color:#94a3b8;">Chọn cấp độ mục tiêu để xem chi tiết bài học và đề thi khảo thí</div>
+          </div>
+        </div>
+        <button onclick="navigate('levelCurriculum')" class="btn btn-primary btn-sm" style="font-weight:800; border-radius:12px;">
+          Xem Toàn Bộ 10 Cấp Độ →
+        </button>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">🌱 A1 Starter</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">🚀 A2 Elementary</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab active" style="background:linear-gradient(135deg, #7c3aed, #4f46e5); color:#fff;">🔥 B1 Intermediate</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">💎 B2 Upper-Inter</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">👑 C1 Advanced</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">🏆 C2 Mastery</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">📊 TOEIC 850+</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">🎓 IELTS 8.0+</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">💼 Business English</button>
+        <button onclick="navigate('levelCurriculum')" class="pill-tab" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.15); color:#fff;">🔬 Phonetic IPA Lab</button>
+      </div>
+    </div>
+
+    <!-- 4. DAILY QUESTS & RECENT PROGRESS -->
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:22px;">
       
-      <!-- Left Card: Tiến độ 6 kỹ năng -->
-      <div class="card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; padding:24px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-          <div style="font-size:16px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+      <!-- Left: Phân tích 6 kỹ năng -->
+      <div class="card" style="background:rgba(15,23,42,0.85); border-radius:20px; border:1px solid rgba(255,255,255,0.08); padding:22px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div style="font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
             📈 Phân Tích Năng Lực 6 Kỹ Năng
           </div>
-          <button onclick="navigate('reports')" class="btn btn-ghost btn-sm" style="font-size:12px; color:#4f46e5; font-weight:700;">Xem chi tiết →</button>
+          <button onclick="navigate('reports')" class="btn btn-ghost btn-sm" style="font-size:12px; color:#38bdf8; font-weight:700;">Xem chi tiết →</button>
         </div>
         <div id="skill-progress-bars" style="display:flex; flex-direction:column; gap:14px;">
           <!-- Dynamically populated -->
         </div>
       </div>
 
-      <!-- Right Card: Nhiệm Vụ Hằng Ngày (Daily Quests Tracker) -->
-      <div class="card" style="background:#ffffff; border-radius:18px; border:1px solid #e2e8f0; padding:24px; box-shadow:0 2px 10px rgba(0,0,0,0.02); display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-          <div style="font-size:16px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+      <!-- Right: Nhiệm vụ hôm nay -->
+      <div class="card" style="background:rgba(15,23,42,0.85); border-radius:20px; border:1px solid rgba(255,255,255,0.08); padding:22px; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div style="font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
             ⚡ Nhiệm Vụ Hôm Nay (Daily Quests)
           </div>
-          <span style="font-size:12px; font-weight:800; color:#ea580c; background:rgba(249,115,22,0.1); padding:3px 10px; border-radius:20px;">+60 XP có thể nhận</span>
+          <span style="font-size:11.5px; font-weight:800; color:#facc15; background:rgba(245,158,11,0.15); padding:3px 10px; border-radius:20px; border:1px solid rgba(245,158,11,0.3);">+60 XP</span>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:12px; flex:1;">
-          
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
               <span style="font-size:20px;">📚</span>
               <div>
-                <div style="font-size:13.5px; font-weight:700; color:#1e293b;">Học 5 Từ Vựng Mới</div>
-                <div style="font-size:11.5px; color:#64748b;">Tiến độ: 3 / 5 từ (+15 XP)</div>
+                <div style="font-size:13.5px; font-weight:700; color:#f1f5f9;">Học 5 Từ Vựng Mới</div>
+                <div style="font-size:11.5px; color:#94a3b8;">Tiến độ: 3 / 5 từ (+15 XP)</div>
               </div>
             </div>
-            <button onclick="navigate('vocabulary')" class="btn btn-sm btn-ghost" style="font-size:12px; font-weight:700; color:#4f46e5; border:1px solid #cbd5e1; border-radius:8px;">Làm ngay</button>
+            <button onclick="navigate('vocabulary')" class="btn btn-sm btn-ghost" style="font-size:12px; font-weight:700; color:#c084fc; border:1px solid rgba(168,85,247,0.4); border-radius:8px;">Học ngay</button>
           </div>
 
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
               <span style="font-size:20px;">🎧</span>
               <div>
-                <div style="font-size:13.5px; font-weight:700; color:#1e293b;">Nghe 1 Bài Luyện Nghe Podcast</div>
-                <div style="font-size:11.5px; color:#64748b;">Tiến độ: 1 / 1 bài (Đã hoàn thành)</div>
+                <div style="font-size:13.5px; font-weight:700; color:#f1f5f9;">Nghe 1 Bài Luyện Nghe Podcast</div>
+                <div style="font-size:11.5px; color:#94a3b8;">Tiến độ: 1 / 1 bài (Đã hoàn thành)</div>
               </div>
             </div>
             <span style="font-size:12px; font-weight:800; color:#10b981; background:rgba(16,185,129,0.1); padding:4px 10px; border-radius:8px;">✅ +20 XP</span>
           </div>
 
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px;">
             <div style="display:flex; align-items:center; gap:12px;">
               <span style="font-size:20px;">🎤</span>
               <div>
-                <div style="font-size:13.5px; font-weight:700; color:#1e293b;">Đàm thoại 3 phút cùng Giảng Viên AI</div>
-                <div style="font-size:11.5px; color:#64748b;">Luyện phản xạ giọng nói (+25 XP)</div>
+                <div style="font-size:13.5px; font-weight:700; color:#f1f5f9;">Đàm thoại 3 phút cùng Giảng Viên AI</div>
+                <div style="font-size:11.5px; color:#94a3b8;">Luyện phản xạ giọng nói (+25 XP)</div>
               </div>
             </div>
-            <button onclick="navigate('teacher')" class="btn btn-sm btn-ghost" style="font-size:12px; font-weight:700; color:#0284c7; border:1px solid #cbd5e1; border-radius:8px;">Gọi ngay</button>
+            <button onclick="navigate('teacher')" class="btn btn-sm btn-ghost" style="font-size:12px; font-weight:700; color:#38bdf8; border:1px solid rgba(56,189,248,0.4); border-radius:8px;">Gọi ngay</button>
           </div>
-
         </div>
       </div>
-    </div>
-
-    <!-- 5. BOTTOM 3 COLUMNS: LEADERBOARD, STREAK CALENDAR & RECENT LOGS -->
-    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px;">
-      
-      <!-- Leaderboard -->
-      <div class="card" style="background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px; display:flex; align-items:center; gap:6px;">
-          🏆 Bảng Xếp Hạng Tuần
-        </div>
-        <div id="bottom-leaderboard" style="font-size:13px; color:#64748b;">
-          Đang tải bảng xếp hạng...
-        </div>
-      </div>
-
-      <!-- Streak 7-Day Flame Tracker -->
-      <div class="card" style="background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-        <div style="font-size:15px; font-weight:800; color:#0f172a; margin-bottom:14px; display:flex; align-items:center; gap:6px;">
-          🔥 Lịch Điểm Danh Streak
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-top:10px;">
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T2</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">🔥</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T3</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">🔥</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T4</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #f97316, #ef4444); color:#fff; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px; box-shadow:0 2px 8px rgba(249,115,22,0.4);">🔥</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T5</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">⚪</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T6</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">⚪</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">T7</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">⚪</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px; font-weight:700; color:#64748b;">CN</div>
-            <div style="width:32px; height:32px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-top:4px; font-size:14px;">⚪</div>
-          </div>
-        </div>
-        <div style="margin-top:14px; font-size:12px; color:#475569; text-align:center;">
-          Học thêm 1 bài hôm nay để giữ chuỗi 🔥 <strong>Streak</strong> không bị gián đoạn!
-        </div>
-      </div>
-
-      <!-- AI Daily Tip -->
-      <div class="card" style="background:linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%); border-radius:16px; border:1px solid #bbf7d0; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
-        <div style="font-size:15px; font-weight:800; color:#15803d; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
-          💡 Mẹo Học Bản Xứ Mỗi Ngày
-        </div>
-        <p style="font-size:12.5px; color:#334155; line-height:1.6; margin-bottom:12px;">
-          <em>"Đừng học từng từ riêng lẻ, hãy học theo cụm từ (Collocations). Ví dụ thay vì nhớ 'decision', hãy nhớ 'make a crucial decision'."</em>
-        </p>
-        <button onclick="navigate('vocabulary')" class="btn btn-sm btn-ghost" style="font-size:11.5px; font-weight:700; color:#15803d; padding:4px 10px; border:1px solid #86efac; border-radius:8px; background:#fff;">
-          Khám phá 500+ Collocations →
-        </button>
-      </div>
-
     </div>
 
   </div>
