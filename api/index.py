@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 from pathlib import Path
 
 # Add project root to sys.path
@@ -21,5 +22,41 @@ try:
 except Exception as e:
     print(f"[VERCEL INIT ERROR] {e}")
 
-from backend.main import app
+try:
+    from backend.main import app as fastapi_app
+
+    class VercelRoutingMiddleware:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http":
+                path = scope.get("path", "")
+                # Normalize path if Vercel stripped /api
+                if not path.startswith("/api") and path != "/":
+                    scope["path"] = "/api" + (path if path.startswith("/") else "/" + path)
+            await self.app(scope, receive, send)
+
+    handler = VercelRoutingMiddleware(fastapi_app)
+except Exception as exc:
+    err_tb = traceback.format_exc()
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    
+    fallback = FastAPI()
+    
+    @fallback.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"])
+    async def fallback_error_handler(full_path: str = ""):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Serverless Function Failed To Initialize",
+                "detail": str(exc),
+                "traceback": err_tb
+            }
+        )
+    handler = fallback
+
+app = handler
+
 

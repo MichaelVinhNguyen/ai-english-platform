@@ -10,12 +10,15 @@ import time
 import uuid
 from typing import Optional, List, Dict, Any
 
-from google import genai
-from google.genai import types as genai_types
-from backend.config import settings
+try:
+    from google import genai
+    from google.genai import types as genai_types
+    _genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+except Exception as _e_genai:
+    _genai_client = None
+    genai_types = None
+    print(f"[AI ENGINE WARN] Could not initialize genai client at import: {_e_genai}")
 
-# Configure Gemini with new SDK
-_genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 _GEMINI_MODEL = settings.GEMINI_MODEL  # e.g. "gemini-flash-latest"
 
 SYSTEM_PROMPT_TEACHER = """Bạn là Giáo viên Tiếng Anh AI song ngữ Anh - Việt tâm lý, chuyên nghiệp chuẩn bản xứ, cực kỳ gần gũi với học viên Việt Nam.
