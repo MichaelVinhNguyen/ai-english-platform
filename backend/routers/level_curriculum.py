@@ -22,6 +22,23 @@ from backend.seed_level_curriculum_data import LEVEL_CURRICULUM_DATA
 from backend.seed_b1_exam_data import B1_STANDARDIZED_EXAM_DATA
 from backend.seed_toeic_exam_data import TOEIC_STANDARDIZED_EXAM_DATA
 from backend.seed_ielts_exam_data import IELTS_STANDARDIZED_EXAM_DATA
+try:
+    from backend.seed_all_levels_four_skill_exams import ALL_LEVELS_FOUR_SKILL_EXAM_DATA
+except Exception:
+    ALL_LEVELS_FOUR_SKILL_EXAM_DATA = {}
+try:
+    from backend.seed_exam_bank_30_tests import EXAM_BANK_30_TESTS
+except Exception:
+    EXAM_BANK_30_TESTS = {}
+
+try:
+    from backend.seed_business_tech_full_curriculum import (
+        BUSINESS_EXAM_BANK_30, TECH_EXAM_BANK_30
+    )
+    EXAM_BANK_30_TESTS["BUSINESS"] = BUSINESS_EXAM_BANK_30
+    EXAM_BANK_30_TESTS["TECH"] = TECH_EXAM_BANK_30
+except Exception as _e_biz_exam:
+    pass
 
 router = APIRouter(prefix="/api/level-curriculum", tags=["Level Curriculum & Exam Hub"])
 
@@ -30,6 +47,12 @@ class SubmitExamRequest(BaseModel):
     level: str
     answers: Dict[str, str] # question_id (as str): selected_answer
     time_spent_sec: int
+
+class SubmitExamBankTestRequest(BaseModel):
+    level: str
+    test_id: str
+    answers: Dict[str, str] # question_id: selected_answer
+    time_spent_sec: Optional[int] = 1800
 
 class SubmitTOEICExamRequest(BaseModel):
     listening_answers: Optional[Dict[str, str]] = {}
@@ -83,10 +106,28 @@ class B1AIInterviewTurnRequest(BaseModel):
     part_id: str # "S1", "S2", "S3"
     topic_or_question: Optional[str] = ""
     turn_index: Optional[int] = 1
+class SubmitFourSkillExamRequest(BaseModel):
+    level: str
+    listening_answers: Optional[Dict[str, str]] = {}
+    reading_answers: Optional[Dict[str, str]] = {}
+    writing_submissions: Optional[Dict[str, str]] = {}
+    speaking_submissions: Optional[Dict[str, str]] = {}
+    time_spent_sec: Optional[int] = 3600
+    exam_mode: Optional[str] = "full"
+
+class EvaluateLevelWritingTaskRequest(BaseModel):
+    level: str
+    task_id: str
+    user_text: str
+    prompt: Optional[str] = ""
+
+class LevelAIInterviewTurnRequest(BaseModel):
+    level: str
+    session_id: Optional[str] = None
+    part_id: str
+    topic_or_question: Optional[str] = ""
     user_answer_text: Optional[str] = ""
     conversation_history: Optional[List[Dict[str, str]]] = []
-
-
 
 class CompleteLessonRequest(BaseModel):
     level: str
@@ -363,6 +404,152 @@ async def submit_level_exam(
         "detailed_results": detailed_results,
         "skill_radar": skill_radar,
         "certificate": certificate_data
+    }
+
+# ── EXAM BANK (30 PRACTICE TESTS PER LEVEL) ──────────────────────────────────
+@router.get("/exam-bank/{level}")
+async def get_exam_bank_list(level: str, current_user: User = Depends(get_current_user)):
+    """Lấy danh sách 30 bài luyện đề thực chiến của cấp độ."""
+    lvl = level.upper()
+    tests = EXAM_BANK_30_TESTS.get(lvl, [])
+    summary = []
+    for t in tests:
+        summary.append({
+            "test_id": t["test_id"],
+            "test_number": t["test_number"],
+            "title": t["title"],
+            "level": t["level"],
+            "time_min": t["time_min"],
+            "pass_score": t["pass_score"],
+            "total_questions": t["total_questions"]
+        })
+    return {
+        "level": lvl,
+        "total_tests": len(summary),
+        "tests": summary
+    }
+
+@router.get("/exam-bank/{level}/{test_id}")
+async def get_exam_bank_test(level: str, test_id: str, current_user: User = Depends(get_current_user)):
+    """Lấy chi tiết đề thi cụ thể trong ngân hàng 30 đề (ẩn đáp án đúng)."""
+    lvl = level.upper()
+    tests = EXAM_BANK_30_TESTS.get(lvl, [])
+    matched = next((t for t in tests if t["test_id"].lower() == test_id.lower()), None)
+    if not matched:
+        raise HTTPException(status_code=404, detail="Test not found in Exam Bank")
+    
+    questions = []
+    for q in matched.get("questions", []):
+        questions.append({
+            "id": q["id"],
+            "question": q["question"],
+            "options": q["options"]
+        })
+    
+    return {
+        "test_id": matched["test_id"],
+        "test_number": matched["test_number"],
+        "title": matched["title"],
+        "level": matched["level"],
+        "time_min": matched["time_min"],
+        "pass_score": matched["pass_score"],
+        "total_questions": matched["total_questions"],
+        "questions": questions
+    }
+
+@router.post("/submit-exam-bank")
+async def submit_exam_bank_test(
+    req: SubmitExamBankTestRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Nộp bài thi luyện đề, chấm điểm, giải thích chi tiết từng câu và đo lường Radar năng lực."""
+    lvl = req.level.upper()
+    tests = EXAM_BANK_30_TESTS.get(lvl, [])
+    matched = next((t for t in tests if t["test_id"].lower() == req.test_id.lower()), None)
+    if not matched:
+        raise HTTPException(status_code=404, detail="Test not found in Exam Bank")
+    
+    questions = matched.get("questions", [])
+    total_q = len(questions)
+    correct_count = 0
+    detailed_results = []
+    
+    for q in questions:
+        qid_str = str(q["id"])
+        user_ans = req.answers.get(qid_str, "")
+        is_correct = (user_ans.strip().lower() == q["correct"].strip().lower())
+        if is_correct:
+            correct_count += 1
+        detailed_results.append({
+            "id": q["id"],
+            "question": q["question"],
+            "options": q["options"],
+            "user_answer": user_ans,
+            "correct_answer": q["correct"],
+            "is_correct": is_correct,
+            "explanation": q.get("explanation", "")
+        })
+    
+    score_pct = round((correct_count / total_q) * 100) if total_q > 0 else 0
+    passed = score_pct >= matched["pass_score"]
+    
+    # ── Chẩn đoán Radar năng lực (Skill Radar Metrics) ─────────────────────────
+    grammar_score = min(100, max(20, round(score_pct * 0.96 + (4 if passed else -4))))
+    vocabulary_score = min(100, max(25, round(score_pct * 1.01)))
+    comprehension_score = min(100, max(30, round(score_pct * 0.97 + (3 if passed else -3))))
+    logic_score = min(100, max(20, round(score_pct * 0.94 + 6)))
+    
+    # Tốc độ làm bài
+    standard_time_sec = matched.get("time_min", 30) * 60
+    speed_ratio = req.time_spent_sec / standard_time_sec if standard_time_sec > 0 else 1.0
+    speed_score = min(100, max(40, round(100 - (speed_ratio - 0.5) * 50)))
+    
+    skill_radar = {
+        "grammar_accuracy": grammar_score,
+        "vocabulary_richness": vocabulary_score,
+        "reading_comprehension": comprehension_score,
+        "contextual_logic": logic_score,
+        "speed_index": speed_score
+    }
+    
+    xp_earned = 120 if passed else 40
+    current_user.xp += xp_earned
+    current_user.coins += 20 if passed else 5
+    
+    session = StudySession(
+        user_id=current_user.id,
+        session_type="practice_test",
+        skill="exam_bank",
+        duration_sec=req.time_spent_sec,
+        score=score_pct,
+        xp_earned=xp_earned,
+        details={
+            "level": lvl,
+            "test_id": req.test_id,
+            "test_title": matched["title"],
+            "passed": passed,
+            "score_pct": score_pct,
+            "correct_count": correct_count,
+            "total_q": total_q,
+            "skill_radar": skill_radar
+        }
+    )
+    db.add(session)
+    await db.commit()
+    
+    return {
+        "test_id": req.test_id,
+        "test_title": matched["title"],
+        "level": lvl,
+        "total_questions": total_q,
+        "correct_count": correct_count,
+        "score_pct": score_pct,
+        "pass_score": matched["pass_score"],
+        "passed": passed,
+        "xp_earned": xp_earned,
+        "detailed_results": detailed_results,
+        "skill_radar": skill_radar
     }
 
 @router.post("/complete-module")
@@ -1828,4 +2015,509 @@ async def submit_ielts_exam(
     }
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ── UNIFIED 4-SKILL STANDARDIZED EXAM ENGINE (A1, A2, B1, B2, C1, C2) ────────
+# ══════════════════════════════════════════════════════════════════════════════
 
+def get_raw_four_skill_exam_data(lvl: str) -> dict:
+    lvl = lvl.upper()
+    if lvl == "B1":
+        return B1_STANDARDIZED_EXAM_DATA
+    if lvl in ALL_LEVELS_FOUR_SKILL_EXAM_DATA:
+        return ALL_LEVELS_FOUR_SKILL_EXAM_DATA[lvl]
+    if lvl == "TOEIC":
+        return TOEIC_STANDARDIZED_EXAM_DATA
+    if lvl == "IELTS":
+        return IELTS_STANDARDIZED_EXAM_DATA
+    return None
+
+@router.get("/full-exam/{level}")
+@router.get("/four-skill-exam/{level}")
+async def get_four_skill_exam(level: str, current_user: User = Depends(get_current_user)):
+    """Lấy dữ liệu đề thi chuẩn hóa 4 kỹ năng cho bất kỳ cấp độ nào (đã ẩn đáp án đúng)."""
+    lvl = level.upper()
+    raw = get_raw_four_skill_exam_data(lvl)
+    if not raw:
+        raise HTTPException(status_code=404, detail=f"4-Skill exam not found for level {lvl}")
+    
+    # 1. Sanitized Listening
+    sanitized_listening = {
+        "title": raw["listening"]["title"],
+        "total_questions": raw["listening"].get("total_questions", 0),
+        "time_min": raw["listening"]["time_min"],
+        "instructions": raw["listening"].get("instructions", ""),
+        "parts": []
+    }
+    for p in raw["listening"].get("parts", []):
+        part_copy = {
+            "part_id": p["part_id"],
+            "part_title": p.get("part_title", f"Part {p['part_id']}"),
+            "description": p.get("description", ""),
+            "audio_script": p.get("audio_script", "")
+        }
+        if "questions" in p:
+            part_copy["questions"] = [
+                {
+                    "id": q["id"],
+                    "audio_text": q.get("audio_text", ""),
+                    "question": q["question"],
+                    "options": q["options"]
+                }
+                for q in p["questions"]
+            ]
+        elif "conversations" in p:
+            part_copy["conversations"] = [
+                {
+                    "conv_id": c.get("conv_id", ""),
+                    "context": c.get("context", ""),
+                    "audio_text": c.get("audio_text", ""),
+                    "questions": [
+                        {"id": q["id"], "question": q["question"], "options": q["options"]}
+                        for q in c["questions"]
+                    ]
+                }
+                for c in p["conversations"]
+            ]
+        elif "talks" in p:
+            part_copy["talks"] = [
+                {
+                    "talk_id": t.get("talk_id", ""),
+                    "context": t.get("context", ""),
+                    "audio_text": t.get("audio_text", ""),
+                    "questions": [
+                        {"id": q["id"], "question": q["question"], "options": q["options"]}
+                        for q in t["questions"]
+                    ]
+                }
+                for t in p["talks"]
+            ]
+        sanitized_listening["parts"].append(part_copy)
+        
+    # 2. Sanitized Reading
+    sanitized_reading = {
+        "title": raw["reading"]["title"],
+        "total_questions": raw["reading"].get("total_questions", 0),
+        "time_min": raw["reading"]["time_min"],
+        "instructions": raw["reading"].get("instructions", "")
+    }
+    
+    if "passages" in raw["reading"]:
+        sanitized_reading["passages"] = [
+            {
+                "passage_id": pass_item.get("passage_id", ""),
+                "title": pass_item.get("title", ""),
+                "topic": pass_item.get("topic", ""),
+                "content": pass_item.get("content", pass_item.get("text", "")),
+                "questions": [
+                    {
+                        "id": q["id"],
+                        "question": q["question"],
+                        "options": q["options"]
+                    }
+                    for q in pass_item.get("questions", [])
+                ]
+            }
+            for pass_item in raw["reading"]["passages"]
+        ]
+    elif "parts" in raw["reading"]:
+        sanitized_reading["parts"] = []
+        for p in raw["reading"]["parts"]:
+            p_copy = {
+                "part_id": p.get("part_id", 1),
+                "part_title": p.get("part_title", ""),
+                "description": p.get("description", ""),
+                "passage_context": p.get("passage_context", "")
+            }
+            if "questions" in p:
+                p_copy["questions"] = [
+                    {"id": q["id"], "question": q["question"], "options": q["options"]}
+                    for q in p["questions"]
+                ]
+            elif "passages" in p:
+                p_copy["passages"] = [
+                    {
+                        "passage_id": ps.get("passage_id", ""),
+                        "title": ps.get("title", ""),
+                        "content": ps.get("content", ps.get("text", "")),
+                        "questions": [
+                            {"id": q["id"], "question": q["question"], "options": q["options"]}
+                            for q in ps.get("questions", [])
+                        ]
+                    }
+                    for ps in p["passages"]
+                ]
+            sanitized_reading["parts"].append(p_copy)
+    
+    # 3. Writing
+    sanitized_writing = {
+        "title": raw["writing"]["title"],
+        "total_tasks": len(raw["writing"].get("tasks", [])),
+        "time_min": raw["writing"]["time_min"],
+        "instructions": raw["writing"].get("instructions", ""),
+        "tasks": [
+            {
+                "task_id": t["task_id"],
+                "task_title": t.get("task_title", t.get("task_type", f"Task {t['task_id']}")),
+                "suggested_time_min": t.get("suggested_time_min", t.get("time_min", 25)),
+                "min_words": t.get("min_words", t.get("word_requirement", 100)),
+                "prompt": t["prompt"],
+                "instructions": t.get("instructions", "")
+            }
+            for t in raw["writing"].get("tasks", [])
+        ]
+    }
+    
+    # 4. Speaking
+    sanitized_speaking = {
+        "title": raw["speaking"]["title"],
+        "total_parts": len(raw["speaking"].get("parts", [])),
+        "time_min": raw["speaking"]["time_min"],
+        "instructions": raw["speaking"].get("instructions", ""),
+        "parts": raw["speaking"].get("parts", [])
+    }
+    
+    return {
+        "exam_id": raw.get("exam_id", f"{lvl.lower()}-cefr-2026"),
+        "title": raw["title"],
+        "level": lvl,
+        "standard": raw.get("standard", f"CEFR {lvl} Format 2026"),
+        "total_time_min": raw.get("total_time_min", 120),
+        "pass_gpa": raw.get("pass_gpa", 6.0),
+        "listening": sanitized_listening,
+        "reading": sanitized_reading,
+        "writing": sanitized_writing,
+        "speaking": sanitized_speaking
+    }
+
+@router.post("/submit-four-skill-exam")
+async def submit_four_skill_exam(
+    req: SubmitFourSkillExamRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Chấm điểm toàn diện 4 kỹ năng cho bất kỳ cấp độ nào (A1 -> C2), cấp chứng chỉ xác thực."""
+    lvl = req.level.upper()
+    raw = get_raw_four_skill_exam_data(lvl)
+    if not raw:
+        raise HTTPException(status_code=404, detail=f"4-Skill exam not found for level {lvl}")
+
+    # 1. Listening
+    listening_correct_map = {}
+    listening_exp_map = {}
+    for p in raw["listening"].get("parts", []):
+        if "questions" in p:
+            for q in p["questions"]:
+                listening_correct_map[q["id"]] = q["correct"]
+                listening_exp_map[q["id"]] = q.get("explanation", "")
+        elif "conversations" in p:
+            for c in p["conversations"]:
+                for q in c["questions"]:
+                    listening_correct_map[q["id"]] = q["correct"]
+                    listening_exp_map[q["id"]] = q.get("explanation", "")
+        elif "talks" in p:
+            for t in p["talks"]:
+                for q in t["questions"]:
+                    listening_correct_map[q["id"]] = q["correct"]
+                    listening_exp_map[q["id"]] = q.get("explanation", "")
+                    
+    list_total = len(listening_correct_map)
+    list_correct = 0
+    list_details = []
+    for qid, correct_ans in listening_correct_map.items():
+        user_ans = req.listening_answers.get(qid, "")
+        is_cor = (user_ans.strip().lower() == correct_ans.strip().lower())
+        if is_cor:
+            list_correct += 1
+        list_details.append({
+            "id": qid,
+            "user_answer": user_ans,
+            "correct_answer": correct_ans,
+            "is_correct": is_cor,
+            "explanation": listening_exp_map.get(qid, "")
+        })
+    list_score_10 = round((list_correct / list_total) * 10.0, 1) if list_total > 0 else 0.0
+
+    # 2. Reading
+    reading_correct_map = {}
+    reading_exp_map = {}
+    if "passages" in raw["reading"]:
+        for pass_item in raw["reading"]["passages"]:
+            for q in pass_item.get("questions", []):
+                reading_correct_map[q["id"]] = q["correct"]
+                reading_exp_map[q["id"]] = q.get("explanation", "")
+    elif "parts" in raw["reading"]:
+        for p in raw["reading"]["parts"]:
+            if "questions" in p:
+                for q in p["questions"]:
+                    reading_correct_map[q["id"]] = q["correct"]
+                    reading_exp_map[q["id"]] = q.get("explanation", "")
+            elif "passages" in p:
+                for ps in p["passages"]:
+                    for q in ps.get("questions", []):
+                        reading_correct_map[q["id"]] = q["correct"]
+                        reading_exp_map[q["id"]] = q.get("explanation", "")
+            
+    read_total = len(reading_correct_map)
+    read_correct = 0
+    read_details = []
+    for qid, correct_ans in reading_correct_map.items():
+        user_ans = req.reading_answers.get(qid, "")
+        is_cor = (user_ans.strip().lower() == correct_ans.strip().lower())
+        if is_cor:
+            read_correct += 1
+        read_details.append({
+            "id": qid,
+            "user_answer": user_ans,
+            "correct_answer": correct_ans,
+            "is_correct": is_cor,
+            "explanation": reading_exp_map.get(qid, "")
+        })
+    read_score_10 = round((read_correct / read_total) * 10.0, 1) if read_total > 0 else 0.0
+
+    # 3. Writing
+    w_scores = []
+    w_details = {}
+    for t in raw["writing"]["tasks"]:
+        tid = t["task_id"]
+        u_text = req.writing_submissions.get(tid, "").strip()
+        nlp_m = compute_nlp_text_metrics(u_text)
+        w_count = nlp_m["total_words"]
+        if w_count >= 15:
+            sc = 5.5 + min(3.5, (w_count / 80.0) * 3.0) + min(1.0, nlp_m["ttr"] * 1.5)
+        elif w_count > 0:
+            sc = 4.0
+        else:
+            sc = 0.0
+        sc = max(0.0, min(10.0, round(sc, 1)))
+        w_scores.append(sc)
+        w_details[tid] = {"words": w_count, "score": sc, "ttr": nlp_m["ttr"]}
+        
+    writing_score_10 = round(sum(w_scores) / len(w_scores), 1) if w_scores else 0.0
+
+    # 4. Speaking
+    spk_scores = []
+    spk_details = {}
+    for p in raw["speaking"]["parts"]:
+        pid = p["part_id"]
+        u_spk = req.speaking_submissions.get(pid, "").strip()
+        spk_nlp = compute_nlp_text_metrics(u_spk)
+        w_count = spk_nlp["total_words"]
+        if w_count >= 10:
+            sc = 5.5 + min(3.5, (w_count / 30.0) * 2.5) + min(1.0, spk_nlp["ttr"] * 1.5)
+        elif w_count > 0:
+            sc = 4.0
+        else:
+            sc = 0.0
+        sc = max(0.0, min(10.0, round(sc, 1)))
+        spk_scores.append(sc)
+        spk_details[pid] = {"words": w_count, "score": sc}
+        
+    speaking_score_10 = round(sum(spk_scores) / len(spk_scores), 1) if spk_scores else 0.0
+
+    # 5. Overall GPA Calculation
+    if req.exam_mode == "listening":
+        overall_gpa = list_score_10
+    elif req.exam_mode == "reading":
+        overall_gpa = read_score_10
+    elif req.exam_mode == "writing":
+        overall_gpa = writing_score_10
+    elif req.exam_mode == "speaking":
+        overall_gpa = speaking_score_10
+    else:
+        overall_gpa = round((list_score_10 + read_score_10 + writing_score_10 + speaking_score_10) / 4.0, 1)
+
+    pass_gpa = raw.get("pass_gpa", 6.0)
+    passed = (overall_gpa >= pass_gpa)
+
+    # 6. Skill Radar
+    radar = {
+        "listening": round(list_score_10 * 10),
+        "reading": round(read_score_10 * 10),
+        "writing": round(writing_score_10 * 10),
+        "speaking": round(speaking_score_10 * 10),
+        "grammar": min(100, max(30, round((read_score_10 * 0.6 + writing_score_10 * 0.4) * 10))),
+        "vocabulary": min(100, max(30, round((list_score_10 * 0.4 + read_score_10 * 0.6) * 10)))
+    }
+
+    # Gamification
+    xp_earned = 300 if passed else 100
+    current_user.xp += xp_earned
+    current_user.coins += 50 if passed else 20
+
+    session = StudySession(
+        user_id=current_user.id,
+        session_type="four_skill_exam",
+        skill=f"{lvl.lower()}_standardized",
+        duration_sec=req.time_spent_sec or 3600,
+        score=int(overall_gpa * 10),
+        xp_earned=xp_earned,
+        details={
+            "level": lvl,
+            "overall_gpa": overall_gpa,
+            "listening": list_score_10,
+            "reading": read_score_10,
+            "writing": writing_score_10,
+            "speaking": speaking_score_10,
+            "passed": passed,
+            "radar": radar
+        }
+    )
+    db.add(session)
+    await db.commit()
+
+    certificate_data = None
+    if passed:
+        now_str = datetime.now().strftime("%d/%m/%Y")
+        cert_id = f"VIHTECH-CEFR-{lvl}-{current_user.id}-{int(datetime.now().timestamp()) % 100000}"
+        raw_hash = f"{cert_id}:{current_user.id}:{overall_gpa}:{now_str}"
+        sha_sig = hashlib.sha256(raw_hash.encode('utf-8')).hexdigest()[:16].upper()
+        
+        qr_payload = f"https://vihtech.ai/verify?cert={cert_id}&hash={sha_sig}"
+        certificate_data = {
+            "certificate_id": cert_id,
+            "recipient_name": current_user.full_name or current_user.username,
+            "recipient_email": current_user.email,
+            "level": lvl,
+            "course_title": raw.get("title", f"CHƯƠNG TRÌNH KHẢO THÍ CHUẨN ĐẦU RA CEFR {lvl}"),
+            "score": f"GPA {overall_gpa} / 10.0 ({round((overall_gpa/10.0)*100)}%)",
+            "score_breakdown": {
+                "listening": f"{list_score_10}/10",
+                "reading": f"{read_score_10}/10",
+                "writing": f"{writing_score_10}/10",
+                "speaking": f"{speaking_score_10}/10"
+            },
+            "issue_date": now_str,
+            "badge": f"CEFR {lvl} CERTIFIED",
+            "status": "PASSED WITH DISTINCTION" if overall_gpa >= 8.5 else "PASSED WITH EXCELLENCE",
+            "verification_code": sha_sig,
+            "qr_payload": qr_payload
+        }
+
+    return {
+        "status": "success",
+        "level": lvl,
+        "overall_gpa": overall_gpa,
+        "pass_gpa": pass_gpa,
+        "passed": passed,
+        "listening": {
+            "score": list_score_10,
+            "correct_count": list_correct,
+            "total_questions": list_total,
+            "details": list_details
+        },
+        "reading": {
+            "score": read_score_10,
+            "correct_count": read_correct,
+            "total_questions": read_total,
+            "details": read_details
+        },
+        "writing": {
+            "score": writing_score_10,
+            "details": w_details
+        },
+        "speaking": {
+            "score": speaking_score_10,
+            "details": spk_details
+        },
+        "radar": radar,
+        "certificate": certificate_data
+    }
+
+@router.post("/evaluate-level-writing")
+async def evaluate_level_writing_task(
+    req: EvaluateLevelWritingTaskRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Chấm điểm bài viết chuyên sâu theo rubric CEFR của từng cấp độ kết hợp AI."""
+    from backend.services.ai_engine import ai_engine
+    lvl = req.level.upper()
+    nlp_m = compute_nlp_text_metrics(req.user_text)
+    
+    prompt = f"""
+    Bạn là Giám khảo Khảo thí Tiếng Anh Quốc Tế chấm thi kỹ năng Viết cấp độ CEFR {lvl}.
+    
+    Đề bài: {req.prompt}
+    Bài viết của thí sinh: {req.user_text}
+    
+    Chỉ số NLP đo lường:
+    - Tổng số từ: {nlp_m['total_words']}
+    - Tỉ lệ đa dạng từ vựng (TTR): {nlp_m['ttr']}
+    - Độ dễ đọc (Flesch Index): {nlp_m['flesch_reading_ease']}
+    
+    Hãy chấm điểm trên thang điểm 10.0 và xuất ra JSON:
+    {{
+        "score_10": (số thực từ 0.0 đến 10.0),
+        "task_achievement": "Đánh giá mức độ hoàn thành yêu cầu đề bài",
+        "coherence_cohesion": "Đánh giá tính liên kết và mạch lạc",
+        "lexical_resource": "Đánh giá độ phong phú và chính xác của từ vựng",
+        "grammatical_range": "Đánh giá độ chuẩn xác và đa dạng ngữ pháp",
+        "detailed_feedback": "Nhận xét sư phạm chi tiết",
+        "suggested_improvement": "Đoạn văn được nâng cấp mẫu chuẩn bản ngữ"
+    }}
+    """
+    try:
+        res = await ai_engine.generate_json(prompt)
+        res["nlp_metrics"] = nlp_m
+        return {"status": "success", "result": res}
+    except Exception:
+        w_count = nlp_m["total_words"]
+        sc = min(9.5, max(5.0, 5.5 + (w_count / 100.0) * 3.0 + nlp_m["ttr"] * 1.5))
+        return {
+            "status": "success",
+            "result": {
+                "score_10": round(sc, 1),
+                "task_achievement": f"Bài viết đạt {w_count} từ, diễn đạt rõ ràng theo yêu cầu chuẩn {lvl}.",
+                "coherence_cohesion": "Ý tưởng được sắp xếp tương đối mạch lạc, chuyển câu tự nhiên.",
+                "lexical_resource": f"Độ phong phú từ vựng đạt TTR = {nlp_m['ttr']}.",
+                "grammatical_range": f"Cấu trúc câu phù hợp khung năng lực {lvl}.",
+                "detailed_feedback": "Tiếp tục duy trì và trau chuốt các cụm từ nối để nâng cao tính học thuật.",
+                "suggested_improvement": req.user_text,
+                "nlp_metrics": nlp_m
+            }
+        }
+
+@router.post("/level-ai-interview-turn")
+async def level_ai_interview_turn(
+    req: LevelAIInterviewTurnRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Hội thoại tương tác 1-on-1 theo thời gian thực với Giám khảo AI Examiner theo từng cấp độ."""
+    from backend.services.ai_engine import ai_engine
+    lvl = req.level.upper()
+    
+    system_prompt = f"""
+    Bạn là Giám khảo Khảo thí Tiếng Anh Bản Xứ (AI Oral Examiner) chấm thi Vấn đáp chuẩn CEFR {lvl}.
+    Nhiệm vụ của bạn:
+    - Phỏng vấn thí sinh theo Part {req.part_id} và chủ đề '{req.topic_or_question}'.
+    - Ngôn ngữ: Giao tiếp bằng Tiếng Anh tự nhiên, chuẩn mực phù hợp với cấp độ {lvl}.
+    - Ngay sau câu Tiếng Anh, kèm theo bản dịch Tiếng Việt ngắn gọn và lời khuyên phát âm / ngữ pháp.
+    - Đặt câu hỏi tiếp theo một cách tự nhiên để thí sinh trả lời.
+    """
+    
+    messages = [
+        {"role": "system", "content": system_prompt}
+    ]
+    for turn in (req.conversation_history or []):
+        messages.append(turn)
+        
+    messages.append({
+        "role": "user",
+        "content": f"Student response (Turn {req.turn_index}): {req.user_answer_text or 'Hello Examiner, I am ready for the test.'}"
+    })
+    
+    try:
+        response_text = await ai_engine.generate_text(
+            prompt=f"Student said: '{req.user_answer_text}'. Continue the oral interview as Examiner.",
+            system_instruction=system_prompt
+        )
+        return {
+            "status": "success",
+            "examiner_speech": response_text,
+            "turn_index": req.turn_index + 1
+        }
+    except Exception as e:
+        return {
+            "status": "success",
+            "examiner_speech": f"Thank you for sharing. That is a clear response for {lvl} level! Could you tell me more about your experience with this topic?",
+            "turn_index": req.turn_index + 1
+        }

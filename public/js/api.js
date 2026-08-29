@@ -68,14 +68,16 @@ const api = {
 
   // ── VOCABULARY ────────────────────────────────────────────────
   vocabulary: {
-    list:       (p) => api.get(`/vocabulary/?${new URLSearchParams(p)}`),
-    explain:    (d) => api.post('/vocabulary/explain', d),
-    addToList:  (id) => api.post(`/vocabulary/add-to-my-list/${id}`),
-    myList:     () => api.get('/vocabulary/my-list'),
-    dueCards:   (n) => api.get(`/vocabulary/flashcards/due?limit=${n||20}`),
-    review:     (d) => api.post('/vocabulary/flashcards/review', d),
-    topics:     () => api.get('/vocabulary/topics'),
-    stats:      () => api.get('/vocabulary/stats'),
+    list:                (p) => api.get(`/vocabulary/?${new URLSearchParams(p)}`),
+    explain:             (d) => api.post('/vocabulary/explain', d),
+    addToList:           (id) => api.post(`/vocabulary/add-to-my-list/${id}`),
+    myList:              () => api.get('/vocabulary/my-list'),
+    dueCards:            (n) => api.get(`/vocabulary/flashcards/due?limit=${n||20}`),
+    flashcardDeck:       (p) => api.get(`/vocabulary/flashcards/deck?${new URLSearchParams(p)}`),
+    flashcardTopicsMeta: () => api.get('/vocabulary/flashcard-topics-meta'),
+    review:              (d) => api.post('/vocabulary/flashcards/review', d),
+    topics:              () => api.get('/vocabulary/topics'),
+    stats:               () => api.get('/vocabulary/stats'),
   },
 
   // ── GRAMMAR ───────────────────────────────────────────────────
@@ -94,6 +96,8 @@ const api = {
     history:        () => api.get('/quiz/history'),
     getCuratedBank: () => api.get('/quiz/curated-bank'),
     getCategory:    (id) => api.get(`/quiz/category/${id}`),
+    topics50Meta:   (cat) => api.get(`/quiz/topics-50-meta${cat ? '?category='+encodeURIComponent(cat) : ''}`),
+    topicQuestions: (name, limit) => api.get(`/quiz/topic-questions/${encodeURIComponent(name)}?limit=${limit||30}`),
   },
 
   // ── WRITING ───────────────────────────────────────────────────
@@ -173,12 +177,21 @@ const api = {
     evaluateWriting: (d) => api.post('/level-curriculum/evaluate-writing', d),
     evaluateSpeaking: (d) => api.post('/level-curriculum/evaluate-speaking', d),
     updateSRS: (d) => api.post('/level-curriculum/srs-review', d),
-    // B1 4-Skill Standardized Exam Suite
-    getB1FullExam: () => api.get('/level-curriculum/b1-full-exam'),
-    submitB1Exam: (d) => api.post('/level-curriculum/submit-b1-exam', d),
-    evaluateB1Writing: (d) => api.post('/level-curriculum/evaluate-b1-writing-task', d),
-    evaluateB1Speaking: (d) => api.post('/level-curriculum/evaluate-b1-speaking-part', d),
-    interviewTurn: (d) => api.post('/level-curriculum/b1-ai-interview-turn', d),
+    // Exam Bank (30 Practice Tests Per Level)
+    getExamBank: (lvl) => api.get(`/level-curriculum/exam-bank/${lvl}`),
+    getExamBankTest: (lvl, testId) => api.get(`/level-curriculum/exam-bank/${lvl}/${testId}`),
+    submitExamBank: (d) => api.post('/level-curriculum/submit-exam-bank', d),
+    // 4-Skill Standardized Exam Suite (A1, A2, B1, B2, C1, C2)
+    getFullExam: (lvl) => api.get(`/level-curriculum/full-exam/${lvl}`),
+    submitFourSkillExam: (d) => api.post('/level-curriculum/submit-four-skill-exam', d),
+    evaluateLevelWriting: (d) => api.post('/level-curriculum/evaluate-level-writing', d),
+    levelInterviewTurn: (d) => api.post('/level-curriculum/level-ai-interview-turn', d),
+    // B1 4-Skill Standardized Exam Suite (Legacy aliases)
+    getB1FullExam: () => api.get('/level-curriculum/full-exam/B1'),
+    submitB1Exam: (d) => api.post('/level-curriculum/submit-four-skill-exam', { ...d, level: 'B1' }),
+    evaluateB1Writing: (d) => api.post('/level-curriculum/evaluate-level-writing', { ...d, level: 'B1' }),
+    evaluateB1Speaking: (d) => api.post('/level-curriculum/evaluate-speaking', d),
+    interviewTurn: (d) => api.post('/level-curriculum/level-ai-interview-turn', { ...d, level: 'B1' }),
     // TOEIC 850+ Standardized Exam Suite (ETS Format 2026)
     getToeicFullExam: () => api.get('/level-curriculum/toeic-full-exam'),
     submitToeicExam: (d) => api.post('/level-curriculum/submit-toeic-exam', d),

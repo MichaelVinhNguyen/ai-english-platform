@@ -87,16 +87,17 @@ def main():
     print("-> Nhan Ctrl + C de dung Server.")
     print("-" * 64 + "\n")
 
-    # 4. Auto open browser
+    # 4. Auto open browser in separate thread safely
     def open_browser():
-        time.sleep(1.2)
+        time.sleep(1.5)
         try:
             webbrowser.open(url)
         except Exception:
             pass
 
-    import threading
-    threading.Thread(target=open_browser, daemon=True).start()
+    if sys.stdin and sys.stdin.isatty():
+        import threading
+        threading.Thread(target=open_browser, daemon=True).start()
 
     # 5. Run Uvicorn
     import uvicorn
@@ -105,14 +106,18 @@ def main():
             "backend.main:app",
             host="127.0.0.1",
             port=target_port,
-            reload=True,
+            reload=False,
             log_level="info"
         )
     except KeyboardInterrupt:
         print("\n[STOP] Da dung server thanh cong.")
     except Exception as e:
         print(f"\n[LOI] Khong the khoi chay server: {e}")
-        input("Nhan Enter de thoat...")
+        if sys.stdin and sys.stdin.isatty():
+            try:
+                input("Nhan Enter de thoat...")
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     main()

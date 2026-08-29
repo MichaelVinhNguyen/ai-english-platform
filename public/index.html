@@ -6,10 +6,215 @@
   <title>AI English Learning Platform – Học Tiếng Anh Thông Minh</title>
   <meta name="description" content="Nền tảng học tiếng Anh thông minh với AI Gemini. Luyện nói, viết, nghe, đọc cùng AI Teacher.">
   <meta name="theme-color" content="#7c3aed">
-  <link rel="icon" type="image/jpeg" href="/assets/vihtech_logo.jpg?v=2026_sharp_contrast_v18">
-  <link rel="stylesheet" href="/css/main.css?v=2026_sharp_contrast_v18">
+  <link rel="icon" type="image/jpeg" href="/assets/vihtech_logo.jpg?v=2026_glenn_doman_v6">
+  <link rel="stylesheet" href="/css/main.css?v=2026_glenn_doman_v6">
   <!-- Three.js for 3D AI Teacher Avatar -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       CLEAN 3D TOPIC SHOWCASE CARD (100% MATCHING USER SCREENSHOT)
+       ═══════════════════════════════════════════════════════════════ */
+    .curated-topic-showcase-grid,
+    .curated-topic-grid,
+    .quiz-50-grid {
+      display: grid !important;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)) !important;
+      gap: 20px !important;
+      margin-top: 16px !important;
+    }
+
+    .curated-topic-showcase-card,
+    .curated-topic-card,
+    .quiz-50-card {
+      background: #ffffff !important;
+      border: 1px solid rgba(226, 232, 240, 0.95) !important;
+      border-radius: 20px !important;
+      padding: 20px 22px !important;
+      cursor: pointer !important;
+      position: relative !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      min-height: 180px !important;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.03) !important;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+      text-align: left !important;
+    }
+
+    /* Top Gradient Accent Line */
+    .curated-topic-showcase-card::before,
+    .curated-topic-card::before,
+    .quiz-50-card::before {
+      content: '' !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      height: 4px !important;
+      background: linear-gradient(90deg, #c084fc 0%, #38bdf8 100%) !important;
+      opacity: 0.95 !important;
+      transition: height 0.25s ease !important;
+    }
+
+    .curated-topic-showcase-card:hover,
+    .curated-topic-card:hover,
+    .quiz-50-card:hover {
+      transform: translateY(-5px) !important;
+      box-shadow: 0 16px 36px rgba(124, 58, 237, 0.15), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+      border-color: #c4b5fd !important;
+    }
+
+    .curated-topic-showcase-card:hover::before,
+    .curated-topic-card:hover::before,
+    .quiz-50-card:hover::before {
+      height: 5px !important;
+    }
+
+    .curated-topic-showcase-card.selected,
+    .curated-topic-card.selected,
+    .quiz-50-card.selected {
+      border: 2px solid #8b5cf6 !important;
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.25), 0 12px 30px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .topic-card-top-row,
+    .curated-topic-top,
+    .quiz-header-row {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      margin-bottom: 12px !important;
+    }
+
+    /* Left Level Pill */
+    .topic-pill-level,
+    .curated-pill-badge,
+    .quiz-icon-box {
+      background: #ede9fe !important;
+      color: #7c3aed !important;
+      font-size: 11.5px !important;
+      font-weight: 800 !important;
+      padding: 4px 12px !important;
+      border-radius: 20px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: auto !important;
+      height: auto !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.1) !important;
+      text-transform: uppercase !important;
+    }
+
+    /* Right Category Pill */
+    .topic-pill-tag,
+    .curated-sphere-icon,
+    .quiz-category-tag {
+      background: #cffafe !important;
+      color: #0891b2 !important;
+      font-size: 11.5px !important;
+      font-weight: 800 !important;
+      padding: 4px 12px !important;
+      border-radius: 20px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-transform: lowercase !important;
+      box-shadow: 0 1px 3px rgba(6, 182, 212, 0.1) !important;
+    }
+
+    /* Title */
+    .topic-card-title,
+    .curated-topic-title,
+    .quiz-title-text {
+      font-size: 15.5px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      line-height: 1.4 !important;
+      margin-bottom: 6px !important;
+      letter-spacing: -0.2px !important;
+    }
+
+    /* Description */
+    .topic-card-desc,
+    .curated-topic-desc,
+    .quiz-desc-text {
+      font-size: 12.5px !important;
+      color: #64748b !important;
+      line-height: 1.5 !important;
+      margin-bottom: 14px !important;
+      min-height: 20px !important;
+    }
+
+    /* Action Link */
+    .topic-card-action,
+    .curated-topic-action-link,
+    .quiz-action-btn {
+      font-size: 12.5px !important;
+      font-weight: 700 !important;
+      color: #7c3aed !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      transition: all 0.2s ease !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      cursor: pointer !important;
+    }
+
+    .curated-topic-showcase-card:hover .topic-card-action,
+    .curated-topic-card:hover .curated-topic-action-link,
+    .quiz-50-card:hover .quiz-action-btn {
+      color: #6d28d9 !important;
+      transform: translateX(4px) !important;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       GLENN DOMAN 3D SMART CARTOON FLASHCARD PLAYER (2026)
+       ═══════════════════════════════════════════════════════════════ */
+    .flashcard-3d-scene {
+      perspective: 1200px !important;
+      width: 100% !important;
+      min-height: 480px !important;
+      margin: 12px 0 20px 0 !important;
+      cursor: pointer !important;
+    }
+
+    .flashcard-3d-card {
+      width: 100% !important;
+      height: 100% !important;
+      position: relative !important;
+      transform-style: preserve-3d !important;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+      min-height: 480px !important;
+    }
+
+    .flashcard-3d-card.flipped {
+      transform: rotateY(180deg) !important;
+    }
+
+    .flashcard-side {
+      position: absolute !important;
+      width: 100% !important;
+      height: 100% !important;
+      backface-visibility: hidden !important;
+      -webkit-backface-visibility: hidden !important;
+      border-radius: 24px !important;
+      padding: 24px !important;
+      box-sizing: border-box !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      overflow: hidden !important;
+    }
+
+    .flashcard-side.back {
+      transform: rotateY(180deg) !important;
+    }
+  </style>
 </head>
 <body>
 
@@ -202,37 +407,10 @@
       <div class="nav-item" data-view="flashcards">
         <span class="nav-icon">🃏</span> Flashcards Anki <span class="nav-badge" id="flashcard-badge">0</span>
       </div>
-    </div>
-
-    <details open style="margin: 10px 10px; border: 1.5px solid rgba(186, 230, 253, 0.85); border-radius: 14px; padding: 6px 8px; background: rgba(255, 255, 255, 0.65); box-shadow: 0 2px 8px rgba(14, 165, 233, 0.04);">
-      <summary style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: #0284c7 !important; cursor: pointer; padding: 8px 6px; display:flex; align-items: center; justify-content: space-between;">
-        <span style="display:flex; align-items:center; gap:6px;">🛠️ BỔ TRỢ & STUDIO CHUYÊN SÂU</span>
-        <span style="font-size:10px; background:#e0f2fe; color:#0284c7; padding:2px 6px; border-radius:8px; font-weight:800;">7 Hubs</span>
-      </summary>
-      <div style="padding-top: 6px; display:flex; flex-direction:column; gap:4px;">
-        <div class="nav-item" data-view="aiRoleplay">
-          <span class="nav-icon">🎭</span> Hội thoại Tình huống
-        </div>
-        <div class="nav-item" data-view="podcast">
-          <span class="nav-icon">🎙️</span> AI Podcast Studio
-        </div>
-        <div class="nav-item" data-view="pronunciationLab">
-          <span class="nav-icon">🔬</span> Phòng Lab Phát Âm IPA
-        </div>
-        <div class="nav-item" data-view="examSimulator">
-          <span class="nav-icon">📝</span> Thi Thử TOEIC / IELTS
-        </div>
-        <div class="nav-item" data-view="socialCommunity">
-          <span class="nav-icon">👥</span> Đấu Trường Học Tập
-        </div>
-        <div class="nav-item" data-view="analytics">
-          <span class="nav-icon">📊</span> Phân Tích Năng Lực
-        </div>
-        <div class="nav-item" data-view="admin">
-          <span class="nav-icon">🛡️</span> CMS Quản trị
-        </div>
+      <div class="nav-item" data-view="admin">
+        <span class="nav-icon">🛡️</span> CMS Quản trị & Cài đặt AI
       </div>
-    </details>
+    </div>
 
     <div class="sidebar-footer">
       <button id="logout-btn" class="btn btn-ghost" style="width:100%; justify-content:flex-start; gap:8px; color:#e11d48 !important; font-weight:800; font-size:13.5px; background:rgba(255, 255, 255, 0.85); border:1.5px solid rgba(244, 63, 94, 0.3); border-radius:12px; padding:10px 14px; box-shadow:0 2px 8px rgba(244, 63, 94, 0.08); transition:all 0.2s ease;">
@@ -290,9 +468,9 @@
 <div id="toast-container"></div>
 
 <!-- SCRIPTS -->
-<script src="/js/api.js?v=2026_clean_auth_v21"></script>
-<script src="/js/platform_modules.js?v=2026_clean_auth_v21"></script>
-<script src="/js/toeic_ielts_exam_studio.js?v=2026_clean_auth_v21"></script>
-<script src="/js/app.js?v=2026_clean_auth_v21"></script>
+<script src="/js/api.js?v=2026_premium_ui_v2"></script>
+<script src="/js/platform_modules.js?v=2026_premium_ui_v2"></script>
+<script src="/js/toeic_ielts_exam_studio.js?v=2026_premium_ui_v2"></script>
+<script src="/js/app.js?v=2026_premium_ui_v2"></script>
 </body>
 </html>

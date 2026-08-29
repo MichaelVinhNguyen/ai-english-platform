@@ -1,6 +1,7 @@
 """
 quiz.py – Quiz & Exercises: AI generate, submit, score
 """
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -823,3 +824,70 @@ async def quiz_history(
         "correct_answer": a.correct_answer, "is_correct": ua.is_correct,
         "xp_earned": ua.xp_earned, "attempted_at": ua.attempted_at
     } for ua, a in rows]
+
+
+from scripts.seed_50_quiz_topics import QUIZ_50_TOPICS_METADATA
+
+@router.get("/topics-50-meta")
+async def get_50_quiz_topics_meta(
+    category: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Trả về danh mục 50 Chủ đề Bài tập & Quiz kèm tiến độ người học."""
+    # Count questions per topic in DB
+    from sqlalchemy import func
+    q_counts = await db.execute(
+        select(QuizQuestion.topic, func.count(QuizQuestion.id))
+        .where(QuizQuestion.topic.isnot(None))
+        .group_by(QuizQuestion.topic)
+    )
+    counts_map = dict(q_counts.all())
+
+    topics = []
+    for t in QUIZ_50_TOPICS_METADATA:
+        if category and category != 'ALL' and t["category"].lower() != category.lower():
+            continue
+        total_q = counts_map.get(t["name"], t["count"])
+        topics.append({
+            "id": t["id"],
+            "name": t["name"],
+            "category": t["category"],
+            "icon": t["icon"],
+            "color": t["color"],
+            "description": t["desc"],
+            "total_questions": total_q
+        })
+
+    return {"topics": topics, "total": len(topics)}
+
+
+@router.get("/topic-questions/{topic_name}")
+async def get_topic_questions(
+    topic_name: str,
+    limit: int = 30,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lấy danh sách 20-30 câu hỏi theo chủ đề."""
+    r = await db.execute(
+        select(QuizQuestion)
+        .where(QuizQuestion.topic == topic_name)
+        .order_by(QuizQuestion.id.asc())
+        .limit(limit)
+    )
+    items = r.scalars().all()
+    questions = []
+    for q in items:
+        opts = q.options if isinstance(q.options, list) else (json.loads(q.options) if isinstance(q.options, str) else [])
+        questions.append({
+            "id": q.id,
+            "question": q.question_text,
+            "question_type": q.question_type or "multiple_choice",
+            "options": opts,
+            "correct_answer": q.correct_answer,
+            "explanation": q.explanation,
+            "level": q.level or "B1",
+            "topic": q.topic
+        })
+    return {"topic": topic_name, "questions": questions, "total": len(questions)}

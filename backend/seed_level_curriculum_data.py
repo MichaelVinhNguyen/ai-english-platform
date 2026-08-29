@@ -7212,18 +7212,39 @@ LEVEL_CURRICULUM_DATA = {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ── MERGE 20X EXTENDED MODULES FOR B1, TOEIC & IELTS ──────────────────────────
+# ── MERGE EXTENDED 30 MODULES FOR A1, A2, B1, B2, C1, C2, TOEIC & IELTS ────────
 # ══════════════════════════════════════════════════════════════════════════════
 try:
     from backend.seed_extended_curriculum_data import (
-        B1_EXTENDED_MODULES, TOEIC_EXTENDED_MODULES, IELTS_EXTENDED_MODULES
+        A1_EXTENDED_MODULES, A2_EXTENDED_MODULES,
+        B1_EXTENDED_MODULES, B2_EXTENDED_MODULES,
+        C1_EXTENDED_MODULES, C2_EXTENDED_MODULES,
+        TOEIC_EXTENDED_MODULES, IELTS_EXTENDED_MODULES
     )
+    if "A1" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["A1"]["modules"] = A1_EXTENDED_MODULES
+    if "A2" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["A2"]["modules"] = A2_EXTENDED_MODULES
     if "B1" in LEVEL_CURRICULUM_DATA:
         LEVEL_CURRICULUM_DATA["B1"]["modules"] = B1_EXTENDED_MODULES
+    if "B2" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["B2"]["modules"] = B2_EXTENDED_MODULES
+    if "C1" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["C1"]["modules"] = C1_EXTENDED_MODULES
+    if "C2" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["C2"]["modules"] = C2_EXTENDED_MODULES
     if "TOEIC" in LEVEL_CURRICULUM_DATA:
         LEVEL_CURRICULUM_DATA["TOEIC"]["modules"] = TOEIC_EXTENDED_MODULES
-    if "IELTS" in LEVEL_CURRICULUM_DATA:
-        LEVEL_CURRICULUM_DATA["IELTS"]["modules"] = IELTS_EXTENDED_MODULES
+    try:
+        from backend.seed_business_tech_full_curriculum import (
+            BUSINESS_EXTENDED_MODULES, TECH_EXTENDED_MODULES
+        )
+        if "BUSINESS" in LEVEL_CURRICULUM_DATA:
+            LEVEL_CURRICULUM_DATA["BUSINESS"]["modules"] = BUSINESS_EXTENDED_MODULES
+        if "TECH" in LEVEL_CURRICULUM_DATA:
+            LEVEL_CURRICULUM_DATA["TECH"]["modules"] = TECH_EXTENDED_MODULES
+    except Exception as _e_biz:
+        pass
 except Exception as _e:
     pass
 

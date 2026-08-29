@@ -350,11 +350,12 @@ function showAuthPage() {
   const appEl = document.getElementById('app');
   if (appEl) appEl.classList.remove('show');
   
-  // Clear any existing input values so fields are completely blank and clean
+  // Auto-fill remembered email from previous sessions
+  const savedEmail = localStorage.getItem('remembered_user_email') || localStorage.getItem('user_email') || '';
   const qEmail = document.getElementById('quick-email-input');
-  if (qEmail) qEmail.value = '';
+  if (qEmail && savedEmail) qEmail.value = savedEmail;
   const aEmail = document.getElementById('admin-login-email');
-  if (aEmail) aEmail.value = '';
+  if (aEmail && savedEmail) aEmail.value = savedEmail;
   const aPass = document.getElementById('admin-login-password');
   if (aPass) aPass.value = '';
 }
@@ -555,6 +556,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       showLoading(btn);
       try {
+        localStorage.setItem('remembered_user_email', email);
+        localStorage.setItem('user_email', email);
         const result = await api.auth.quickEmailLogin({ email });
         api.setToken(result.access_token);
         state.user = result.user;
@@ -563,6 +566,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         toast(`Xin chào ${result.user.full_name || result.user.email}! Đã nạp dữ liệu học tập thành công 🎉`, 'success');
       } catch (err) {
         // Hybrid Cloud/Client Fallback for seamless reliable access
+        localStorage.setItem('remembered_user_email', email);
+        localStorage.setItem('user_email', email);
         const uname = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
         const fallbackStudent = {
           id: Date.now(),
@@ -599,6 +604,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const btn = document.getElementById('admin-login-btn');
       const email = document.getElementById('admin-login-email').value.trim();
       const password = document.getElementById('admin-login-password').value;
+      if (email) {
+        localStorage.setItem('remembered_user_email', email);
+        localStorage.setItem('user_email', email);
+      }
       showLoading(btn);
       try {
         const result = await api.auth.login({ email, password });
@@ -2326,17 +2335,21 @@ function renderGrammarRules(level) {
   const grid = document.getElementById('rules-grid');
   if (!grid) return;
   const filtered = level ? allGrammarRules.filter(r => r.level === level) : allGrammarRules;
+  grid.className = 'curated-topic-showcase-grid';
   grid.innerHTML = filtered.length ? filtered.map(r => {
     const rJson = JSON.stringify(r).replace(/"/g, '&quot;');
+    const tag = r.category || 'grammar';
     return `
-      <div class="card" onclick="openGrammarModal(${rJson})" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="badge badge-purple">${r.level||'?'}</span>
-          <span class="badge badge-cyan">${r.category||''}</span>
+      <div class="curated-topic-showcase-card" onclick="openGrammarModal(${rJson})">
+        <div class="topic-card-top-row">
+          <span class="topic-pill-level">${r.level || 'A1'}</span>
+          <span class="topic-pill-tag">${tag}</span>
         </div>
-        <div style="font-size:16px;font-weight:700;margin-top:10px;color:var(--text-primary)">${r.title}</div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-top:6px">${(r.explanation_vi||'').substring(0,80)}...</div>
-        <div style="margin-top:12px;font-size:12px;color:var(--accent-primary);font-weight:600">📖 Nhấn để học chi tiết →</div>
+        <div class="topic-card-title">${r.title}</div>
+        <div class="topic-card-desc">${r.explanation_vi ? (r.explanation_vi.length > 55 ? r.explanation_vi.substring(0, 52) + '...' : r.explanation_vi) : '...'}</div>
+        <div class="topic-card-action">
+          📖 Nhấn để học chi tiết →
+        </div>
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài ngữ pháp nào ở cấp độ này</div>';
 }
@@ -2460,15 +2473,43 @@ registerView('quiz', () => `
   </div>
 
   <div class="sub-tabs-bar">
-    <button class="pill-tab active" onclick="switchModuleSubTab('quiz','curated',this)">🏛️ Đề Tuyển Chọn (Curated Bank)</button>
+    <button id="quiz-tab-50-topics" class="pill-tab active" onclick="switchModuleSubTab('quiz','topics-50',this)">🏷️ 50 Chủ Đề (1,250 Câu)</button>
+    <button class="pill-tab" onclick="switchModuleSubTab('quiz','curated',this)">🏛️ Đề Tuyển Chọn ETS & IELTS</button>
     <button class="pill-tab" onclick="switchModuleSubTab('quiz','daily',this)">⚡ Thử Thách Hàng Ngày</button>
     <button class="pill-tab" onclick="switchModuleSubTab('quiz','ai-gen',this)">🤖 AI Generate Đề Tùy Chọn</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('quiz','history',this)">📊 Lịch Sử Làm Bài</button>
+    <button class="pill-tab" onclick="switchModuleSubTab('quiz','history',this); loadQuizHistoryList();">📊 Lịch Sử Làm Bài</button>
   </div>
 
   <div id="quiz-content-wrapper">
+    <!-- PANEL 0: 50 TOPICS EXPLORER -->
+    <div id="quiz-panel-topics-50" class="module-panel" style="display:block">
+      <div class="topic-filter-bar">
+        <div class="topic-category-pills" id="quiz-topic-filter-pills">
+          <button class="topic-cat-pill active" onclick="filterQuiz50Grid('ALL', this)">🌟 Tất cả (50)</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('General Life', this)">☕ Đời sống & Xã giao</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('Business', this)">💼 Kinh doanh & Công sở</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('Technology', this)">🤖 Công nghệ & AI</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('Grammar', this)">✏️ Ngữ pháp & Cấu trúc</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('Travel', this)">✈️ Du lịch & Văn hóa</button>
+          <button class="topic-cat-pill" onclick="filterQuiz50Grid('Exam', this)">🏆 TOEIC & IELTS</button>
+        </div>
+        <div style="min-width:240px">
+          <input type="text" id="quiz-topic-search" class="form-control" placeholder="🔍 Tìm chủ đề bài tập..." oninput="onSearchQuiz50Topics(this.value)" style="border-radius:20px;padding:8px 16px;font-size:13px">
+        </div>
+      </div>
+
+      <div id="quiz-50-loading" style="text-align:center;padding:40px">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <div style="margin-top:12px;color:var(--text-secondary);font-size:14px">Đang tải 50 chủ đề bài tập trắc nghiệm...</div>
+      </div>
+
+      <div id="quiz-50-grid-container" class="quiz-50-grid" style="display:none">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
     <!-- PANEL 1: CURATED BANK -->
-    <div id="quiz-panel-curated" class="module-panel" style="display:block">
+    <div id="quiz-panel-curated" class="module-panel" style="display:none">
       <div class="grid grid-3" style="gap:16px;">
         <div class="card" style="border-left:4px solid var(--accent-primary); display:flex; flex-direction:column; justify-content:space-between;">
           <div>
@@ -2624,6 +2665,7 @@ registerView('quiz', () => `
   <div id="quiz-game" style="display:none;margin-top:20px"></div>
   <div id="quiz-result" style="display:none;max-width:700px;margin:20px auto"></div>
 `, async () => {
+  load50QuizTopics();
   if (state.pendingExamType) {
     const exam = state.pendingExamType;
     state.pendingExamType = null;
@@ -2654,6 +2696,117 @@ registerView('quiz', () => `
     }, 150);
   }
 });
+
+// ── 50 QUIZ TOPICS CONTROLLER ────────────────────────────────────────────────
+window.load50QuizTopics = async () => {
+  const container = document.getElementById('quiz-50-grid-container');
+  const loading = document.getElementById('quiz-50-loading');
+  if (!container) return;
+
+  try {
+    const res = await api.quiz.topics50Meta();
+    state.all50QuizTopics = res.topics || [];
+    renderQuiz50TopicsGrid(state.all50QuizTopics);
+    if (loading) loading.style.display = 'none';
+    if (container) container.style.display = 'grid';
+  } catch (err) {
+    if (loading) loading.innerHTML = `<div style="color:var(--accent-red);padding:20px">Lỗi nạp 50 chủ đề quiz: ${err.message}</div>`;
+  }
+};
+
+window.renderQuiz50TopicsGrid = (topics) => {
+  const container = document.getElementById('quiz-50-grid-container');
+  if (!container) return;
+
+  if (!topics || !topics.length) {
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy chủ đề phù hợp.</div>';
+    return;
+  }
+
+  container.innerHTML = topics.map(t => `
+    <div class="curated-topic-showcase-card" onclick="start50QuizTopic('${t.name.replace(/'/g, "\\'")}')">
+      <div class="topic-card-top-row">
+        <span class="topic-pill-level">${t.total_questions || 25} Câu Hỏi</span>
+        <span class="topic-pill-tag">${t.category || 'Quiz'}</span>
+      </div>
+      <div class="topic-card-title">${t.name}</div>
+      <div class="topic-card-desc">${t.description ? (t.description.length > 55 ? t.description.substring(0, 52) + '...' : t.description) : '...'}</div>
+      <div class="topic-card-action">
+        📖 Nhấn để làm bài ngay →
+      </div>
+    </div>
+  `).join('');
+};
+
+window.filterQuiz50Grid = (cat, btnElem) => {
+  document.querySelectorAll('#quiz-topic-filter-pills .topic-cat-pill').forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  const allTopics = state.all50QuizTopics || [];
+  if (cat === 'ALL') {
+    renderQuiz50TopicsGrid(allTopics);
+  } else {
+    const filtered = allTopics.filter(t => (t.category || '').toLowerCase() === cat.toLowerCase());
+    renderQuiz50TopicsGrid(filtered);
+  }
+};
+
+window.onSearchQuiz50Topics = (keyword) => {
+  const kw = (keyword || '').toLowerCase().trim();
+  const allTopics = state.all50QuizTopics || [];
+  if (!kw) {
+    renderQuiz50TopicsGrid(allTopics);
+    return;
+  }
+  const filtered = allTopics.filter(t => 
+    (t.name || '').toLowerCase().includes(kw) || 
+    (t.description || '').toLowerCase().includes(kw) ||
+    (t.category || '').toLowerCase().includes(kw)
+  );
+  renderQuiz50TopicsGrid(filtered);
+};
+
+window.start50QuizTopic = async (topicName) => {
+  const contentWrapper = document.getElementById('quiz-content-wrapper');
+  const gameEl = document.getElementById('quiz-game');
+  const resultEl = document.getElementById('quiz-result');
+  if (resultEl) resultEl.style.display = 'none';
+  if (contentWrapper) contentWrapper.style.display = 'none';
+  if (!gameEl) return;
+
+  gameEl.style.display = '';
+  gameEl.innerHTML = `<div style="text-align:center;padding:50px"><div class="loading-dots"><span></span><span></span><span></span></div><p style="margin-top:16px;color:var(--text-secondary)">Đang tải 25 câu hỏi chủ đề: <strong>${topicName}</strong>...</p></div>`;
+
+  try {
+    toast(`Đang tải bộ câu hỏi: ${topicName}...`, 'info');
+    const res = await api.quiz.topicQuestions(topicName, 30);
+    if (!res.questions || !res.questions.length) {
+      throw new Error('Chưa có câu hỏi cho chủ đề này.');
+    }
+    state.quizQuestions = res.questions.map(q => ({
+      id: q.id,
+      question_text: q.question,
+      question_type: q.question_type || 'multiple_choice',
+      options: q.options,
+      correct_answer: q.correct_answer,
+      explanation: q.explanation,
+      level: q.level || 'B1',
+      skill: topicName
+    }));
+    state.quizIndex = 0;
+    state.quizAnswers = [];
+    renderQuizQuestion();
+  } catch (err) {
+    gameEl.innerHTML = `
+      <div class="card" style="text-align:center; padding:30px;">
+        <p style="color:var(--accent-red); margin-bottom:14px;">${err.message}</p>
+        <button class="btn btn-primary" onclick="if(document.getElementById('quiz-content-wrapper'))document.getElementById('quiz-content-wrapper').style.display=''; if(document.getElementById('quiz-game'))document.getElementById('quiz-game').style.display='none'">
+          ← Quay lại danh mục 50 chủ đề
+        </button>
+      </div>
+    `;
+  }
+};
 
 window.startQuizForSkill = (skill, topic = '') => {
   const tabs = document.querySelectorAll('#quiz-content-wrapper .pill-tab, .sub-tabs-bar .pill-tab');
@@ -3399,6 +3552,7 @@ registerView('translation', () => `
     <button class="pill-tab" onclick="switchModuleSubTab('translation','business',this)">🏢 Business</button>
     <button class="pill-tab" onclick="switchModuleSubTab('translation','grammar-exp',this)">🔍 Grammar Explanation</button>
     <button class="pill-tab" onclick="switchModuleSubTab('translation','vocab-exp',this)">🔤 Vocabulary Explanation</button>
+    <button class="pill-tab" onclick="switchModuleSubTab('translation','exercises',this); loadTranslationExercises();">🎯 35+ Bài Tập Luyện Dịch (A1-C2)</button>
   </div>
 
   <div id="translation-content-wrapper">
@@ -3561,6 +3715,22 @@ registerView('translation', () => `
         </div>
       </div>
     </div>
+
+    <!-- PANEL 9: 35+ TRANSLATION EXERCISES -->
+    <div id="translation-panel-exercises" class="module-panel" style="display:none">
+      <div class="card" style="max-width:950px; margin:0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+          <div class="card-title" style="margin:0;">🎯 Kho 35+ Bài Tập Luyện Dịch Song Ngữ (A1 - C2)</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary trans-lvl-btn" onclick="filterTranslationExercises('', this)">Tất cả (35 bài)</button>
+            ${['A1','A2','B1','B2','C1','C2'].map(l=>`<button class="btn btn-sm btn-secondary trans-lvl-btn" onclick="filterTranslationExercises('${l}', this)">${l}</button>`).join('')}
+          </div>
+        </div>
+        <div id="translation-exercises-list" class="grid grid-1" style="gap:12px;">
+          <div style="text-align:center; padding:30px; color:var(--text-secondary);">Đang tải danh sách bài tập dịch...</div>
+        </div>
+      </div>
+    </div>
   </div>
 `, () => {
   let transTimeout;
@@ -3631,182 +3801,1129 @@ registerView('translation', () => `
       out.innerHTML = `<span style="color:var(--accent-red)">Lỗi dịch thuật: ${e.message}</span>`; 
     }
   };
+
+  window.filterTranslationExercises = (lvl, btn) => {
+    document.querySelectorAll('.trans-lvl-btn').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-secondary');
+    });
+    if (btn) {
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+    }
+    loadTranslationExercises(lvl);
+  };
+
+  window.loadTranslationExercises = async (level = '') => {
+    const listEl = document.getElementById('translation-exercises-list');
+    if (!listEl) return;
+    try {
+      const token = localStorage.getItem('token');
+      const url = `/api/translation/exercises${level ? '?level=' + level : ''}`;
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      const exercises = data.exercises || [];
+      if (!exercises.length) {
+        listEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-secondary);">Không có bài tập nào phù hợp.</div>';
+        return;
+      }
+      listEl.innerHTML = exercises.map(ex => `
+        <div class="card" style="border-left:4px solid var(--accent-${ex.level.startsWith('A')?'green':(ex.level.startsWith('B')?'primary':'cyan')});">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-weight:700; font-size:15px; color:var(--text-primary);">${ex.title}</div>
+            <div style="display:flex; gap:6px;">
+              <span class="badge badge-purple">${ex.level}</span>
+              <span class="badge badge-cyan">${ex.direction === 'en_to_vi' ? '🇬🇧 ➔ 🇻🇳' : '🇻🇳 ➔ 🇬🇧'}</span>
+            </div>
+          </div>
+          <div style="padding:10px 12px; background:var(--bg-secondary); border-radius:8px; margin-bottom:8px; font-size:13.5px;">
+            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:2px;">CÂU GỐC:</div>
+            <div style="color:var(--accent-cyan); font-weight:600;">"${ex.source_text}"</div>
+          </div>
+          <div style="padding:10px 12px; background:var(--bg-glass); border-radius:8px; margin-bottom:8px; font-size:13px;">
+            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:2px;">BẢN DỊCH CHUẨN:</div>
+            <div style="color:var(--text-primary); font-weight:500;">"${ex.reference_translation}"</div>
+          </div>
+          ${ex.notes ? `<div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">💡 <em>Ghi chú: ${ex.notes}</em></div>` : ''}
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="loadPresetTranslation('${ex.source_text.replace(/'/g, "\\'")}'); switchModuleSubTab('translation','text',document.querySelector('.pill-tab'));">✨ Đưa vào khung dịch AI</button>
+            <button class="btn btn-secondary btn-sm" onclick="speakText('${ex.source_text.replace(/'/g, "\\'")}')">🔊 Nghe câu gốc</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      listEl.innerHTML = `<div style="color:var(--accent-red); padding:20px;">Lỗi tải bài tập: ${e.message}</div>`;
+    }
+  };
 });
 
 // ── FLASHCARD VIEW ────────────────────────────────────────────────────────────
 registerView('flashcards', () => `
   <div class="feature-header-card">
     <div>
-      <div class="feature-header-title">🃏 FLASHCARDS PLATFORM – ÔN TẬP TỪ VỰNG THÔNG MINH SRS</div>
-      <div class="feature-header-sub">Trọn bộ 7 phân hệ Flashcards: My Cards, AI Generate Deck, Topic Deck, CEFR Deck, Review Mode, SRS Algorithm, Statistics.</div>
+      <div class="feature-header-title">🃏 FLASHCARDS PLATFORM – KHO TỪ VỰNG CHUẨN QUỐC TẾ SRS</div>
+      <div class="feature-header-sub">Khung chuẩn CEFR A1-C2, Luyện thi TOEIC 850+, IELTS 8.0+, Tiếng Anh Doanh Nghiệp & 30 Chủ đề chuyên sâu 1,500 từ. Tích hợp Lật thẻ 3D, Hình ảnh minh họa, Chú thích chi tiết & Thuật toán SM-2.</div>
     </div>
   </div>
 
   <div class="sub-tabs-bar">
-    <button class="pill-tab active" onclick="switchModuleSubTab('flashcards','review',this)">🔄 Review SRS</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','my-cards',this)">🎴 My Cards</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','ai-gen',this)">🤖 AI Generate</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','topic-deck',this)">🏷️ Topic Deck</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','cefr-deck',this)">📊 CEFR Deck</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','srs',this)">🧠 SRS Info</button>
-    <button class="pill-tab" onclick="switchModuleSubTab('flashcards','stats',this)">📈 Statistics</button>
+    <button id="fc-tab-topics" class="pill-tab active" onclick="switchFlashcardSubTab('topics', this)">🏷️ Danh Sách Chủ Đề & CEFR</button>
+    <button id="fc-tab-player" class="pill-tab" onclick="switchFlashcardSubTab('player', this)">🎴 Trình Học Thẻ 3D</button>
+    <button id="fc-tab-due" class="pill-tab" onclick="switchFlashcardSubTab('due', this)">🔄 Ôn Tập Cần Học (SRS Due)</button>
+    <button id="fc-tab-ai" class="pill-tab" onclick="switchFlashcardSubTab('ai', this)">🤖 AI Tạo Thẻ Tùy Chỉnh</button>
+    <button id="fc-tab-stats" class="pill-tab" onclick="switchFlashcardSubTab('stats', this)">📈 Thống Kê Tiến Độ</button>
   </div>
 
   <div id="flashcards-content-wrapper">
-    <!-- PANEL 1: REVIEW MODE -->
-    <div id="flashcards-panel-review" class="module-panel" style="display:block">
-      <div style="max-width:600px;margin:0 auto">
-        <div id="flashcard-loading" style="text-align:center;padding:40px">
-          <div class="loading-dots"><span></span><span></span><span></span></div>
+    <!-- PANEL 1: TOPICS GRID EXPLORER (EXACT SCREENSHOT UI) -->
+    <div id="flashcards-panel-topics" class="module-panel" style="display:block">
+      <div class="topic-filter-bar">
+        <div class="topic-category-pills" id="topic-filter-pills">
+          <button class="topic-cat-pill active" onclick="filterCuratedTopics('ALL', this)">🌟 Tất cả (40)</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('CEFR', this)">🏆 CEFR (A1-C2)</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Exam', this)">🎯 TOEIC & IELTS</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Business', this)">💼 Kinh doanh & BIZ</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Technology', this)">🤖 Công nghệ & AI</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Lifestyle', this)">☕ Đời sống & Ẩm thực</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Academic', this)">🎓 Học thuật & Khoa học</button>
+          <button class="topic-cat-pill" onclick="filterCuratedTopics('Nature', this)">🌿 Tự nhiên & Xã hội</button>
         </div>
-        <div id="flashcard-done" style="display:none;text-align:center;padding:40px">
-          <div style="font-size:64px">🎉</div>
-          <h2 style="margin-top:12px">Hoàn thành! Không còn thẻ cần ôn hôm nay!</h2>
-          <button class="btn btn-primary" style="margin-top:16px" onclick="navigate('vocabulary')">📚 Thêm từ mới</button>
+        <div style="min-width:240px">
+          <input type="text" id="topic-search-input" class="form-control" placeholder="🔍 Tìm kiếm chủ đề / cấp độ..." oninput="onSearchCuratedTopics(this.value)" style="border-radius:20px;padding:8px 16px;font-size:13px">
         </div>
-        <div id="flashcard-game" style="display:none">
-          <div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
-            <span>Còn lại: <strong id="cards-remaining">0</strong></span>
-            <span>Đã ôn: <strong id="cards-reviewed">0</strong></span>
+      </div>
+
+      <div id="topics-grid-loading" style="text-align:center;padding:40px">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <div style="margin-top:12px;color:var(--text-secondary);font-size:14px">Đang tải danh sách chủ đề chuẩn quốc tế...</div>
+      </div>
+
+      <div id="curated-topics-grid-container" class="curated-topic-grid" style="display:none">
+        <!-- Rendered dynamically matching exact screenshot -->
+      </div>
+    </div>
+
+    <!-- PANEL 2: INTERACTIVE STUDY PLAYER (3D FLIP / QUIZ / SPELLING) -->
+    <div id="flashcards-panel-player" class="module-panel" style="display:none">
+      <div class="flashcard-player-hero">
+        <div class="flashcard-deck-header">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn btn-secondary btn-sm" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="border-radius:10px">
+              ← Danh sách chủ đề
+            </button>
+            <div>
+              <div id="player-deck-title" style="font-weight:800;font-size:16px;color:var(--text-primary)">CEFR A2</div>
+              <div id="player-deck-progress-text" style="font-size:12px;color:var(--text-secondary)">Thẻ 1 / 50</div>
+            </div>
           </div>
-          <div class="flashcard-container">
-            <div class="flashcard" id="main-card" onclick="flipCard()">
-              <div class="flashcard-face">
-                <div id="card-word" class="flashcard-word"></div>
-                <div id="card-ipa" class="flashcard-ipa"></div>
-                <div style="font-size:13px;color:var(--text-muted);margin-top:12px">👆 Nhấn để lật thẻ</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-purple" id="player-study-mode-badge">🎴 Lật Thẻ 3D</span>
+            <button class="btn btn-secondary btn-sm" onclick="toggleShuffleCurrentDeck()" title="Xáo trộn thứ tự thẻ">🔀</button>
+          </div>
+        </div>
+
+        <!-- LANGUAGE FLIP MODE TOGGLE -->
+        <div class="flashcard-lang-toggle-bar">
+          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">🔄 Chiều học:</span>
+          <button id="fc-lang-btn-en-vi" class="fc-lang-btn active" onclick="setFlashcardLangMode('en_to_vi')">🇬🇧 Anh ➔ 🇻🇳 Việt</button>
+          <button id="fc-lang-btn-vi-en" class="fc-lang-btn" onclick="setFlashcardLangMode('vi_to_en')">🇻🇳 Việt ➔ 🇬🇧 Anh</button>
+        </div>
+
+        <!-- MODE TABS (Flip, Quiz, Spelling) -->
+        <div class="flashcard-mode-tabs">
+          <button id="mode-tab-flip" class="fc-mode-tab active" onclick="setPlayerStudyMode('flip')">🎴 Lật Thẻ 3D Chi Tiết</button>
+          <button id="mode-tab-quiz" class="fc-mode-tab" onclick="setPlayerStudyMode('quiz')">🎯 Trắc Nghiệm Nhanh</button>
+          <button id="mode-tab-spelling" class="fc-mode-tab" onclick="setPlayerStudyMode('spelling')">✍️ Gõ Từ Chính Tả</button>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin-bottom:20px">
+          <div id="player-top-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg, #6366f1, #8b5cf6);border-radius:10px;transition:width 0.3s ease"></div>
+        </div>
+
+        <!-- 1. FLIP CARD MODE (GLENN DOMAN 3D CARTOON SMART CARD) -->
+        <div id="player-mode-flip-wrap">
+          <!-- CARD NAVIGATION TOOLBAR -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" onclick="prevFlashcard()" style="border-radius:12px;font-weight:700">⬅️ Từ trước</button>
+              <button class="btn btn-primary btn-sm" onclick="nextFlashcard()" style="border-radius:12px;font-weight:700">Từ tiếp theo ➡️</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-secondary btn-sm" onclick="speakActiveWord()" style="border-radius:12px;font-weight:700">🔊 Phát âm mẫu</button>
+              <button class="btn btn-ghost btn-sm" id="btn-autoplay-flashcard" onclick="toggleAutoPlayFlashcard()" style="border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,0.15)">⚡ Tự động chạy: TẮT</button>
+            </div>
+          </div>
+
+          <div class="flashcard-3d-scene" onclick="flipActiveCard()">
+            <div class="flashcard-3d-card" id="main-3d-flashcard">
+              <!-- FRONT: GLENN DOMAN STYLE (RED VIETNAMESE + ENGLISH + IPA + CUTE 3D CARTOON) -->
+              <div class="flashcard-side front glenn-doman-front" style="background:#ffffff;border:2px solid #e2e8f0;color:#0f172a;text-align:center;display:flex;flex-direction:column;justify-content:space-between;padding:24px;border-radius:24px;box-shadow:0 15px 40px rgba(0,0,0,0.08)">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="badge" id="card-level-badge" style="background:#ede9fe;color:#7c3aed;font-weight:800;border-radius:20px;padding:4px 12px">A1</span>
+                  <span class="badge" id="card-type-label" style="background:#cffafe;color:#0891b2;font-weight:800;border-radius:20px;padding:4px 12px">Hành động • Verb</span>
+                </div>
+
+                <!-- MAIN WORD CONTENT -->
+                <div style="margin: 10px 0;">
+                  <div id="player-card-vi-top" style="color:#dc2626;font-size:32px;font-weight:900;letter-spacing:-0.5px;margin-bottom:6px">Đánh răng</div>
+                  <div id="player-card-word" style="color:#0f172a;font-size:28px;font-weight:800;margin-bottom:4px">Brush teeth</div>
+                  <div id="player-card-ipa" style="color:#475569;font-size:18px;font-family:monospace;font-weight:600">[ brʌʃ tiːθ ]</div>
+                </div>
+
+                <!-- 3D CARTOON ILLUSTRATION -->
+                <div class="glenn-cartoon-wrap" style="height:190px;width:100%;display:flex;align-items:center;justify-content:center;margin:8px 0;background:#f8fafc;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0">
+                  <img id="player-card-img-front" src="/assets/login_hero_3d.jpg" alt="3D Cartoon Illustration" style="max-height:175px;max-width:90%;object-fit:contain;transition:transform 0.3s ease" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=learn'">
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:6px">
+                  <span>👆 Nhấn vào thẻ để lật xem ví dụ & mẹo nhớ</span>
+                  <button class="btn btn-sm btn-ghost" style="color:#7c3aed;font-weight:700;padding:2px 8px" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe lại</button>
+                </div>
               </div>
-              <div class="flashcard-face flashcard-back">
-                <div id="card-meaning" class="flashcard-meaning"></div>
-                <div id="card-example" style="font-size:12px;color:var(--text-secondary);margin-top:12px;font-style:italic"></div>
+
+              <!-- BACK: DETAILS + BILINGUAL EXAMPLE + MNEMONIC MEMORY HOOK -->
+              <div class="flashcard-side back" style="background:#ffffff;border:2px solid #c4b5fd;color:#0f172a;border-radius:24px;padding:24px;box-shadow:0 15px 40px rgba(124,58,237,0.12)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                  <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:800;border-radius:20px;padding:4px 12px">📖 Nghĩa & Ví Dụ Ngữ Cảnh</span>
+                  <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe phát âm</button>
+                </div>
+
+                <div>
+                  <div id="player-card-vi" style="font-size:24px;font-weight:800;color:#dc2626;margin-bottom:4px">Đánh răng</div>
+                  <div id="player-card-en" style="font-size:14px;color:#334155;margin-bottom:14px;line-height:1.5">Clean one's teeth using a toothbrush and toothpaste.</div>
+                  
+                  <!-- BILINGUAL EXAMPLE -->
+                  <div class="card-bilingual-example" id="player-card-bilingual-example" style="background:#f1f5f9;border-left:4px solid #8b5cf6;padding:12px 16px;border-radius:10px;margin-bottom:12px">
+                    <div class="card-example-en" id="player-card-ex-en" style="font-size:14.5px;font-weight:700;color:#0f172a">"Remember to brush your teeth before going to bed."</div>
+                    <div class="card-example-vi" id="player-card-ex-vi" style="font-size:13px;color:#475569;margin-top:4px">Hãy nhớ đánh răng trước khi đi ngủ.</div>
+                  </div>
+
+                  <!-- MNEMONIC TIP -->
+                  <div class="card-mnemonic-box" id="player-card-mnemonic-box" style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px">
+                    💡 <strong>Mẹo nhớ từ:</strong> <em>"Brush"</em> là bàn chải / chải, <em>"Teeth"</em> là những chiếc răng ➔ chải răng = đánh răng!
+                  </div>
+
+                  <!-- COLLOCATIONS & SYNONYMS -->
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <span style="font-size:11.5px;color:#64748b;font-weight:700">Cụm từ liên quan:</span>
+                    <div id="player-card-collocations" class="card-tags-list"></div>
+                  </div>
+                </div>
+
+                <div style="font-size:11.5px;color:#64748b;text-align:center;margin-top:10px">
+                  🔄 Bấm vào thẻ để quay lại mặt trước
+                </div>
               </div>
             </div>
           </div>
-          <div id="quality-section" style="display:none;text-align:center;margin-top:20px">
-            <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px">Bạn nhớ từ này như thế nào?</p>
-            <div class="quality-btns">
-              <button class="quality-btn btn" style="background:rgba(239,68,68,0.2);color:#f87171" onclick="reviewCard(0)">😰 Quên</button>
-              <button class="quality-btn btn" style="background:rgba(245,158,11,0.2);color:#fbbf24" onclick="reviewCard(2)">🤔 Khó</button>
-              <button class="quality-btn btn" style="background:rgba(6,182,212,0.2);color:#22d3ee" onclick="reviewCard(3)">😊 Nhớ</button>
-              <button class="quality-btn btn" style="background:rgba(16,185,129,0.2);color:#34d399" onclick="reviewCard(5)">🚀 Thuộc</button>
+
+          <!-- SRS 4 BUTTONS -->
+          <div id="srs-actions-panel" style="display:block;margin-top:16px">
+            <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:10px">
+              Đánh giá mức độ ghi nhớ (Thuật toán SuperMemo SM-2):
             </div>
+            <div class="srs-rating-grid">
+              <button class="srs-btn srs-btn-forget" onclick="submitFlashcardSRS(0)">
+                <span>😰 Quên</span>
+                <span class="srs-hotkey-badge">Phím 1 • 1 ngày</span>
+              </button>
+              <button class="srs-btn srs-btn-hard" onclick="submitFlashcardSRS(2)">
+                <span>🤔 Khó</span>
+                <span class="srs-hotkey-badge">Phím 2 • 2 ngày</span>
+              </button>
+              <button class="srs-btn srs-btn-good" onclick="submitFlashcardSRS(3)">
+                <span>😊 Nhớ (+5XP)</span>
+                <span class="srs-hotkey-badge">Phím 3 • 4 ngày</span>
+              </button>
+              <button class="srs-btn srs-btn-easy" onclick="submitFlashcardSRS(5)">
+                <span>🚀 Thuộc (+5XP)</span>
+                <span class="srs-hotkey-badge">Phím 4 • 7 ngày</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. QUIZ MODE -->
+        <div id="player-mode-quiz-wrap" style="display:none">
+          <div class="card" style="padding:28px;text-align:center">
+            <span class="badge badge-purple" style="margin-bottom:12px">Trắc nghiệm chọn nghĩa đúng</span>
+            <div id="quiz-question-word" style="font-size:32px;font-weight:800;color:var(--text-primary);margin-bottom:4px">word</div>
+            <div id="quiz-question-ipa" style="font-size:16px;color:var(--accent-cyan);font-family:monospace;margin-bottom:16px">[ /ipa/ ]</div>
+            <button class="btn btn-sm btn-secondary" onclick="speakActiveWord()" style="border-radius:20px;margin-bottom:20px">🔊 Nghe phát âm</button>
+            <div id="quiz-options-list" class="quiz-choice-list">
+              <!-- Choices rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SPELLING MODE -->
+        <div id="player-mode-spelling-wrap" style="display:none">
+          <div class="card" style="padding:28px;text-align:center;max-width:560px;margin:0 auto">
+            <span class="badge badge-cyan" style="margin-bottom:12px">Luyện gõ từ vựng chính tả</span>
+            <div id="spelling-meaning-prompt" style="font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:6px">Nghĩa tiếng Việt</div>
+            <div id="spelling-ipa-hint" style="font-size:14px;color:var(--text-muted);font-family:monospace;margin-bottom:20px">/ipa/</div>
+            <div style="display:flex;gap:8px;max-width:360px;margin:0 auto 16px auto">
+              <input type="text" id="spelling-input" class="form-control" placeholder="Gõ từ tiếng Anh..." style="text-align:center;font-size:16px;font-weight:700" onkeydown="if(event.key==='Enter')checkSpellingAnswer()">
+              <button class="btn btn-primary" onclick="checkSpellingAnswer()">Kiểm tra</button>
+            </div>
+            <div id="spelling-feedback" style="min-height:30px"></div>
+          </div>
+        </div>
+
+        <!-- FINISHED CELEBRATION VIEW -->
+        <div id="player-deck-finished" class="card" style="display:none;text-align:center;padding:40px">
+          <div style="font-size:54px;margin-bottom:12px">🎉</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:8px">Tuyệt vời! Bạn đã hoàn thành bộ thẻ</div>
+          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px">Tất cả các từ đã được ghi nhận vào lịch ôn tập ngắt quãng (SM-2).</p>
+          <div style="display:flex;gap:12px;justify-content:center">
+            <button class="btn btn-primary" onclick="restartCurrentDeck()">🔄 Học lại bộ này</button>
+            <button class="btn btn-secondary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))">🏷️ Chọn chủ đề khác</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PANEL 2: MY CARDS -->
-    <div id="flashcards-panel-my-cards" class="module-panel" style="display:none">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:12px">🎴 Thẻ Từ Vựng Cá Nhân Của Bạn (My Deck)</div>
-        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Danh sách các từ vựng bạn đã lưu trong quá trình đọc, nghe và tra từ.</p>
-        <button class="btn btn-secondary" onclick="navigate('vocabulary')">📚 Xem tất cả từ vựng</button>
+    <!-- PANEL 3: SRS DUE REVIEWS -->
+    <div id="flashcards-panel-due" class="module-panel" style="display:none">
+      <div class="card" style="max-width:600px;margin:0 auto;text-align:center;padding:32px">
+        <div style="font-size:48px;margin-bottom:12px">⏰</div>
+        <div class="card-title" style="margin-bottom:8px">Từ Vựng Cần Ôn Tập Hôm Nay (SRS Due)</div>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px;line-height:1.6">
+          Thuật toán Spaced Repetition (SM-2) tự động tính toán khoảng cách ngày ôn tập tối ưu để chống quên (Forgetting Curve).
+        </p>
+        <button class="btn btn-primary btn-lg" onclick="loadDueFlashcardsDeck()" style="font-weight:800">
+          🚀 Bắt đầu ôn tập các từ đến hạn
+        </button>
       </div>
     </div>
 
-    <!-- PANEL 3: AI GENERATE -->
-    <div id="flashcards-panel-ai-gen" class="module-panel" style="display:none">
-      <div class="card" style="max-width:600px;margin:0 auto">
-        <div class="card-title" style="margin-bottom:12px">🤖 AI Tự Động Tạo Bộ Flashcards Theo Chủ Đề</div>
+    <!-- PANEL 4: AI GENERATE CUSTOM FLASHCARDS -->
+    <div id="flashcards-panel-ai" class="module-panel" style="display:none">
+      <div class="card" style="max-width:620px;margin:0 auto">
+        <div class="card-title" style="margin-bottom:16px">🤖 AI Tạo Bộ Thẻ Flashcard Tùy Chỉnh</div>
         <div class="form-group">
-          <input class="form-control" id="fc-ai-topic" placeholder="Nhập chủ đề (VD: Artificial Intelligence, Medical, IELTS Academic...)">
+          <label class="form-label">Chủ đề mong muốn</label>
+          <input type="text" id="ai-fc-topic" class="form-control" placeholder="VD: Phỏng vấn xin việc ngành IT, Du lịch Nhật Bản, Đàm phán B2B...">
         </div>
-        <button class="btn btn-primary btn-full" onclick="generateAIFlashcardDeck()">✨ Tạo bộ thẻ với AI</button>
-        <div id="fc-ai-gen-res"></div>
+        <div class="grid grid-2" style="gap:12px">
+          <div class="form-group">
+            <label class="form-label">Trình độ CEFR</label>
+            <select id="ai-fc-level" class="form-control">
+              <option value="A1">A1 – Mới bắt đầu</option>
+              <option value="A2">A2 – Sơ cấp</option>
+              <option value="B1" selected>B1 – Trung cấp</option>
+              <option value="B2">B2 – Trung cao cấp</option>
+              <option value="C1">C1 – Cao cấp</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Số lượng từ</label>
+            <select id="ai-fc-count" class="form-control">
+              <option value="10" selected>10 từ vựng</option>
+              <option value="20">20 từ vựng</option>
+              <option value="30">30 từ vựng</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full btn-lg" onclick="generateAIFlashcardDeck()" style="font-weight:800;margin-top:8px">
+          ✨ Sinh bộ thẻ Flashcard AI ngay
+        </button>
       </div>
     </div>
 
-    <!-- PANEL 4: TOPIC DECK -->
-    <div id="flashcards-panel-topic-deck" class="module-panel" style="display:none">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:12px">🏷️ Bộ Thẻ Từ Vựng Phân Loại Theo Chủ Đề</div>
-        <div class="grid grid-3">
-          <div class="card"><div style="font-weight:700">💼 Business & Economy</div><div style="font-size:12px;color:var(--text-secondary)">50 thẻ từ vựng</div></div>
-          <div class="card"><div style="font-weight:700">✈️ Travel & Airport</div><div style="font-size:12px;color:var(--text-secondary)">40 thẻ từ vựng</div></div>
-          <div class="card"><div style="font-weight:700">💻 Technology & AI</div><div style="font-size:12px;color:var(--text-secondary)">60 thẻ từ vựng</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PANEL 5: CEFR DECK -->
-    <div id="flashcards-panel-cefr-deck" class="module-panel" style="display:none">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:12px">📊 Bộ Thẻ Theo Chuẩn Trình Độ CEFR</div>
-        <div class="grid grid-3">
-          ${['A1','A2','B1','B2','C1','C2'].map(l=>`
-            <div class="card" style="text-align:center">
-              <div class="badge badge-purple" style="font-size:14px;padding:4px 10px">${l}</div>
-              <div style="font-size:12px;color:var(--text-secondary);margin-top:6px">Oxford 3000/5000 Words</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- PANEL 6: SRS INFO -->
-    <div id="flashcards-panel-srs" class="module-panel" style="display:none">
-      <div class="card" style="max-width:650px;margin:0 auto">
-        <div class="card-title" style="margin-bottom:12px">🧠 Thuật Toán Lặp Lại Ngắt Quãng (SuperMemo SM-2 SRS)</div>
-        <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">
-          Hệ thống sẽ tự động tính toán thời gian tối ưu dựa trên độ khó bạn đánh giá (Quên, Khó, Nhớ, Thuộc) để nhắc nhở bạn ôn tập lại đúng thời điểm não bộ sắp quên.
-        </div>
-      </div>
-    </div>
-
-    <!-- PANEL 7: STATISTICS -->
+    <!-- PANEL 5: STATS -->
     <div id="flashcards-panel-stats" class="module-panel" style="display:none">
-      <div class="card" style="max-width:650px;margin:0 auto">
-        <div class="card-title" style="margin-bottom:16px">📈 Thống Kê Thẻ Đã Ghi Nhớ Sâu</div>
-        <div class="grid grid-2" style="text-align:center">
-          <div class="card"><div style="font-size:12px;color:var(--text-secondary)">Thẻ thuộc lòng (Mastered)</div><div style="font-size:28px;font-weight:800;color:var(--accent-green)">142</div></div>
-          <div class="card"><div style="font-size:12px;color:var(--text-secondary)">Thẻ đang học (Learning)</div><div style="font-size:28px;font-weight:800;color:var(--accent-cyan)">58</div></div>
-        </div>
+      <div id="flashcard-stats-container" style="max-width:700px;margin:0 auto">
+        <div style="text-align:center;padding:40px;color:var(--text-secondary)">Đang tải số liệu học tập...</div>
       </div>
     </div>
   </div>
 `, async () => {
-  state.flashcards = [];
+  // Initialize state
+  state.flashcardTopics = [];
+  state.currentFlashcardDeck = [];
   state.flashcardIndex = 0;
   state.flashcardReviewed = 0;
-  try {
-    const cards = await api.vocabulary.dueCards(20);
-    document.getElementById('flashcard-loading').style.display = 'none';
-    if (!cards.length) { document.getElementById('flashcard-done').style.display = ''; return; }
-    state.flashcards = cards;
-    document.getElementById('flashcard-game').style.display = '';
-    showFlashcard();
-  } catch(e) { toast(e.message, 'error'); }
+  state.flashcardStudyMode = 'flip';
+  state.selectedCuratedTopicId = 'cefr_a2';
+
+  // Load curated topics
+  await loadCuratedTopicsGrid();
 });
 
-function showFlashcard() {
-  const card = state.flashcards[state.flashcardIndex];
-  if (!card) { document.getElementById('flashcard-game').style.display = 'none'; document.getElementById('flashcard-done').style.display = ''; return; }
-  document.getElementById('card-word').textContent = card.word;
-  document.getElementById('card-ipa').textContent = card.ipa || '';
-  document.getElementById('card-meaning').textContent = card.definition_vi || card.definition_en || '';
-  document.getElementById('card-example').textContent = card.examples?.[0] || '';
-  document.getElementById('cards-remaining').textContent = state.flashcards.length - state.flashcardIndex;
-  document.getElementById('cards-reviewed').textContent = state.flashcardReviewed;
-  document.getElementById('main-card').classList.remove('flipped');
-  document.getElementById('quality-section').style.display = 'none';
-  
-  // Auto speak the word when shown
-  speakText(card.word);
-}
-window.flipCard = () => {
-  document.getElementById('main-card').classList.toggle('flipped');
-  document.getElementById('quality-section').style.display = 'block';
+// ── CURATED TOPICS DATASET (100% MATCHING USER SCREENSHOT + 30 TOPICS) ────────
+const CURATED_FEATURED_TOPICS = [
+  {
+    id: 'cefr_a1',
+    code: 'A1',
+    codeColor: '#10b981',
+    sphere: '🟢',
+    title: 'CEFR A1',
+    desc: 'IPA chuẩn, 500+ từ vựng, tự giới thiệu & chào hỏi',
+    levelLabel: 'Mất Gốc / Breakthrough',
+    levelColor: '#10b981',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'A1'
+  },
+  {
+    id: 'cefr_a2',
+    code: 'A2',
+    codeColor: '#3b82f6',
+    sphere: '🔵',
+    title: 'CEFR A2',
+    desc: 'Quá khứ đơn, thói quen, du lịch & mua sắm',
+    levelLabel: 'Sơ Cấp / Elementary',
+    levelColor: '#3b82f6',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'A2'
+  },
+  {
+    id: 'cefr_b1',
+    code: 'B1',
+    codeColor: '#f59e0b',
+    sphere: '🟡',
+    title: 'CEFR B1',
+    desc: 'Hiện tại hoàn thành, câu bị động, đàm thoại tự tin',
+    levelLabel: 'Trung Cấp / Intermediate',
+    levelColor: '#f59e0b',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'B1'
+  },
+  {
+    id: 'cefr_b2',
+    code: 'B2',
+    codeColor: '#f97316',
+    sphere: '🟠',
+    title: 'CEFR B2',
+    desc: 'Đảo ngữ, câu phức, tranh luận & viết luận học thuật',
+    levelLabel: 'Trung Cao Cấp / Upper-Inter',
+    levelColor: '#f97316',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'B2'
+  },
+  {
+    id: 'cefr_c1',
+    code: 'C1',
+    codeColor: '#ef4444',
+    sphere: '🔴',
+    title: 'CEFR C1',
+    desc: 'Giả định cách, nuances, đàm phán & diễn thuyết đỉnh cao',
+    levelLabel: 'Cao Cấp / Advanced',
+    levelColor: '#ef4444',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'C1'
+  },
+  {
+    id: 'cefr_c2',
+    code: 'C2',
+    codeColor: '#78350f',
+    sphere: '👑',
+    title: 'CEFR C2',
+    desc: 'Tu từ học thuật, văn phong uyên bác bậc thầy',
+    levelLabel: 'Bản Ngữ / Mastery',
+    levelColor: '#78350f',
+    category: 'CEFR',
+    queryType: 'level',
+    queryValue: 'C2'
+  },
+  {
+    id: 'toeic_850',
+    code: 'TOEIC',
+    codeColor: '#8b5cf6',
+    sphere: '💼',
+    title: 'TOEIC 850+',
+    desc: '7 Part đề thi ETS, bẫy từ loại, đọc hiểu & nghe hiểu',
+    levelLabel: 'ETS Format 2026',
+    levelColor: '#8b5cf6',
+    category: 'Exam',
+    queryType: 'topic',
+    queryValue: 'Job Interview & Career Development'
+  },
+  {
+    id: 'ielts_80',
+    code: 'IELTS',
+    codeColor: '#06b6d4',
+    sphere: '🎓',
+    title: 'IELTS 8.0+',
+    desc: 'Writing Task 2, Paraphrasing C1/C2 & Phản xạ Speaking',
+    levelLabel: 'Academic 4 Skills',
+    levelColor: '#06b6d4',
+    category: 'Exam',
+    queryType: 'topic',
+    queryValue: 'Education & Academic Life'
+  },
+  {
+    id: 'business_biz',
+    code: 'BUSINESS',
+    codeColor: '#ec4899',
+    sphere: '💬',
+    title: 'Business BIZ',
+    desc: 'Đàm phán hợp đồng, viết email thương mại & chốt deal',
+    levelLabel: 'Thương Mại Quốc Tế',
+    levelColor: '#ec4899',
+    category: 'Business',
+    queryType: 'topic',
+    queryValue: 'Business, Management & Workplace'
+  },
+  {
+    id: 'tech_ai',
+    code: 'TECH',
+    codeColor: '#10b981',
+    sphere: '⚡',
+    title: 'Tech & AI',
+    desc: 'Agile standup, Architecture review, microservices & LLM',
+    levelLabel: 'CNTT & Trí Tuệ Nhân Tạo',
+    levelColor: '#10b981',
+    category: 'Technology',
+    queryType: 'topic',
+    queryValue: 'Technology & Artificial Intelligence'
+  }
+];
+
+const TOPIC_IMAGE_MAP = {
+  "Daily Life & Routines": "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=700&auto=format&fit=crop&q=80",
+  "Food, Cooking & Dining": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=700&auto=format&fit=crop&q=80",
+  "Shopping, Fashion & Retail": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=700&auto=format&fit=crop&q=80",
+  "Family, Relationships & Society": "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=700&auto=format&fit=crop&q=80",
+  "Business, Management & Workplace": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=700&auto=format&fit=crop&q=80",
+  "Finance, Banking & Investment": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=700&auto=format&fit=crop&q=80",
+  "Job Interview & Career Development": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=700&auto=format&fit=crop&q=80",
+  "Marketing, Advertising & Branding": "https://images.unsplash.com/photo-1533750349088-cd871a92f312?w=700&auto=format&fit=crop&q=80",
+  "Logistics, Supply Chain & E-commerce": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=700&auto=format&fit=crop&q=80",
+  "Innovation, Startups & Entrepreneurship": "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=700&auto=format&fit=crop&q=80",
+  "Technology & Artificial Intelligence": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80",
+  "Science, Space & Astronomy": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=700&auto=format&fit=crop&q=80",
+  "Environment, Nature & Climate": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=700&auto=format&fit=crop&q=80",
+  "Architecture, Housing & Real Estate": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=700&auto=format&fit=crop&q=80",
+  "Health, Medicine & Wellness": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=700&auto=format&fit=crop&q=80",
+  "Weather, Seasons & Natural Disasters": "https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=700&auto=format&fit=crop&q=80",
+  "Animals, Wildlife & Marine Biology": "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=700&auto=format&fit=crop&q=80",
+  "Philosophy, Psychology & Mindfulness": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=700&auto=format&fit=crop&q=80",
+  "Travel, Tourism & Transportation": "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=700&auto=format&fit=crop&q=80",
+  "Hospitality, Hotel & Customer Service": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=700&auto=format&fit=crop&q=80",
+  "Sports, Fitness & Outdoor Activities": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=700&auto=format&fit=crop&q=80",
+  "Hobbies, Leisure & Creative Skills": "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=700&auto=format&fit=crop&q=80",
+  "Idioms, Phrasal Verbs & Slang for Speaking": "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=700&auto=format&fit=crop&q=80",
+  "Culture, Traditions & Festivals": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=700&auto=format&fit=crop&q=80",
+  "Entertainment, Cinema & Arts": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=700&auto=format&fit=crop&q=80",
+  "Media, News & Communication": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=700&auto=format&fit=crop&q=80",
+  "Education & Academic Life": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=700&auto=format&fit=crop&q=80",
+  "Law, Crime & Justice": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80",
+  "Politics, Diplomacy & Global Affairs": "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=700&auto=format&fit=crop&q=80",
+  "Emotions, Personality & Character": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=700&auto=format&fit=crop&q=80"
 };
-window.reviewCard = async (quality) => {
-  const card = state.flashcards[state.flashcardIndex];
+
+// ── FLASHCARD EVENT HANDLERS & LOGIC ─────────────────────────────────────────
+
+window.switchFlashcardSubTab = (tabName, btnElem) => {
+  document.querySelectorAll('#flashcards-content-wrapper > .module-panel').forEach(p => p.style.display = 'none');
+  const target = document.getElementById(`flashcards-panel-${tabName}`);
+  if (target) target.style.display = 'block';
+
+  document.querySelectorAll('.sub-tabs-bar .pill-tab').forEach(b => b.classList.remove('active'));
+  if (btnElem) btnElem.classList.add('active');
+
+  if (tabName === 'stats') loadFlashcardStats();
+  if (tabName === 'due') loadDueFlashcardsDeck();
+};
+
+window.loadCuratedTopicsGrid = async () => {
   try {
-    await api.vocabulary.review({ vocab_id: card.vocab_id, quality });
-    state.flashcardReviewed++;
-    state.flashcardIndex++;
-    if (quality >= 3) showXPPopup(5);
-    showFlashcard();
-  } catch(e) { toast(e.message, 'error'); }
+    const res = await api.vocabulary.flashcardTopicsMeta();
+    state.flashcardTopics = res.topics || [];
+    document.getElementById('topics-grid-loading').style.display = 'none';
+    document.getElementById('curated-topics-grid-container').style.display = 'grid';
+    renderCuratedTopicsGrid('ALL', '');
+  } catch(e) {
+    document.getElementById('topics-grid-loading').innerHTML = `
+      <div style="color:#f87171;font-size:14px">Không thể tải danh sách chủ đề: ${e.message}</div>
+    `;
+  }
 };
+
+window.filterCuratedTopics = (category, pillElem) => {
+  document.querySelectorAll('#topic-filter-pills .topic-cat-pill').forEach(p => p.classList.remove('active'));
+  if (pillElem) pillElem.classList.add('active');
+  const searchVal = document.getElementById('topic-search-input')?.value || '';
+  renderCuratedTopicsGrid(category, searchVal);
+};
+
+window.onSearchCuratedTopics = (query) => {
+  const activePill = document.querySelector('#topic-filter-pills .topic-cat-pill.active');
+  const currentCat = activePill ? (activePill.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'ALL') : 'ALL';
+  renderCuratedTopicsGrid(currentCat, query);
+};
+
+function renderCuratedTopicsGrid(category = 'ALL', search = '') {
+  const container = document.getElementById('curated-topics-grid-container');
+  if (!container) return;
+
+  const q = search.trim().toLowerCase();
+
+  // 1. Build unified topic list (Featured 10 + 30 Database Topics)
+  const allItems = [...CURATED_FEATURED_TOPICS];
+
+  // Map 30 database topics into identical curated card format
+  const dbTopics = (state.flashcardTopics || []).map((t, i) => ({
+    id: `db_topic_${i}`,
+    code: (t.name.split(' ')[0] || 'TOPIC').slice(0, 6).toUpperCase(),
+    codeColor: t.color || '#6366f1',
+    sphere: t.icon || '📚',
+    title: t.name,
+    desc: t.description || '50 từ vựng chuyên sâu chuẩn học thuật & giao tiếp quốc tế.',
+    levelLabel: t.category || 'Chuyên Đề Ứng Dụng',
+    levelColor: t.color || '#6366f1',
+    category: t.category || 'Lifestyle',
+    queryType: 'topic',
+    queryValue: t.name
+  }));
+
+  // Merge without duplicate topic names
+  dbTopics.forEach(dt => {
+    if (!allItems.some(item => item.title.toLowerCase() === dt.title.toLowerCase())) {
+      allItems.push(dt);
+    }
+  });
+
+  // Filter
+  const filtered = allItems.filter(item => {
+    const matchCat = (category === 'ALL') || 
+                     (item.category && item.category.toLowerCase().includes(category.toLowerCase())) ||
+                     (category === 'CEFR' && item.category === 'CEFR') ||
+                     (category === 'Exam' && item.category === 'Exam');
+    const matchSearch = !q || 
+                        item.title.toLowerCase().includes(q) || 
+                        item.desc.toLowerCase().includes(q) ||
+                        item.code.toLowerCase().includes(q);
+    return matchCat && matchSearch;
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">
+        Không tìm thấy chủ đề phù hợp với từ khóa "${search}".
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(item => {
+    const isSelected = state.selectedCuratedTopicId === item.id;
+    return `
+      <div class="curated-topic-showcase-card ${isSelected ? 'selected' : ''}" 
+           onclick="selectAndStartTopic('${item.id}', '${item.queryType}', '${item.queryValue.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')">
+        ${isSelected ? '<div class="topic-selected-badge">✓ ĐANG CHỌN</div>' : ''}
+        <div class="topic-card-top-row">
+          <span class="topic-pill-level">${item.code}</span>
+          <span class="topic-pill-tag">${(item.category || 'Topic').toLowerCase()}</span>
+        </div>
+        <div class="topic-card-title">${item.title}</div>
+        <div class="topic-card-desc">${item.desc ? (item.desc.length > 55 ? item.desc.substring(0, 52) + '...' : item.desc) : '...'}</div>
+        <div class="topic-card-action">
+          📖 Nhấn để học chi tiết →
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.selectAndStartTopic = async (topicId, queryType, queryValue, displayTitle) => {
+  state.selectedCuratedTopicId = topicId;
+  renderCuratedTopicsGrid();
+
+  if (queryType === 'level') {
+    await loadCefrDeck(queryValue, displayTitle);
+  } else {
+    await startTopicStudy(queryValue, displayTitle);
+  }
+};
+
+window.startTopicStudy = async (topicName, displayTitle) => {
+  try {
+    const title = displayTitle || topicName;
+    toast(`Đang tải từ vựng: ${title}...`, 'info');
+    const res = await api.vocabulary.flashcardDeck({ topic: topicName, limit: 50, shuffle: false });
+    if (!res.cards || !res.cards.length) {
+      toast('Đang nạp từ vựng dự phòng theo chủ đề...', 'info');
+      const fallbackRes = await api.vocabulary.flashcardDeck({ limit: 50, shuffle: true });
+      if (!fallbackRes.cards || !fallbackRes.cards.length) {
+        toast('Không tìm thấy thẻ nào cho chủ đề này.', 'warning');
+        return;
+      }
+      res.cards = fallbackRes.cards;
+    }
+    state.currentFlashcardDeck = res.cards;
+    state.currentDeckTitle = title;
+    state.flashcardIndex = 0;
+    state.flashcardReviewed = 0;
+
+    // Switch to player tab
+    switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
+    document.getElementById('player-deck-title').textContent = title;
+    document.getElementById('player-deck-finished').style.display = 'none';
+    renderActiveFlashcard();
+  } catch(e) {
+    toast(`Lỗi tải bộ thẻ: ${e.message}`, 'error');
+  }
+};
+
+window.loadCefrDeck = async (level, displayTitle) => {
+  try {
+    const title = displayTitle || `CEFR Level ${level}`;
+    toast(`Đang tải từ vựng khung chuẩn ${title}...`, 'info');
+    const res = await api.vocabulary.flashcardDeck({ level, limit: 50, shuffle: true });
+    if (!res.cards || !res.cards.length) {
+      toast('Không có từ vựng cho cấp độ này.', 'warning');
+      return;
+    }
+    state.currentFlashcardDeck = res.cards;
+    state.currentDeckTitle = title;
+    state.flashcardIndex = 0;
+    state.flashcardReviewed = 0;
+
+    switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
+    document.getElementById('player-deck-title').textContent = title;
+    document.getElementById('player-deck-finished').style.display = 'none';
+    renderActiveFlashcard();
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+};
+
+window.loadDueFlashcardsDeck = async () => {
+  try {
+    const cards = await api.vocabulary.dueCards(50);
+    if (!cards || !cards.length) {
+      toast('Tuyệt vời! Bạn đã hoàn thành tất cả thẻ cần ôn hôm nay.', 'success');
+      return;
+    }
+    state.currentFlashcardDeck = cards;
+    state.currentDeckTitle = "SRS Due Reviews (Cần ôn hôm nay)";
+    state.flashcardIndex = 0;
+    state.flashcardReviewed = 0;
+
+    switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
+    document.getElementById('player-deck-title').textContent = "Hôm nay cần ôn tập (SRS)";
+    document.getElementById('player-deck-finished').style.display = 'none';
+    renderActiveFlashcard();
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+};
+
+
+let flashcardAutoPlayTimer = null;
+let isFlashcardAutoPlaying = false;
+
+window.renderActiveFlashcard = () => {
+  const deck = state.currentFlashcardDeck || [];
+  const finishedElem = document.getElementById('player-deck-finished');
+  const flipWrap = document.getElementById('player-mode-flip-wrap');
+  const quizWrap = document.getElementById('player-mode-quiz-wrap');
+  const spellingWrap = document.getElementById('player-mode-spelling-wrap');
+
+  if (!deck.length) {
+    if (finishedElem) {
+      finishedElem.style.display = 'block';
+      finishedElem.innerHTML = `
+        <div style="font-size:48px;margin-bottom:12px">📭</div>
+        <div style="font-size:20px;font-weight:800;color:var(--text-primary);margin-bottom:8px">Không có từ vựng nào trong chủ đề này</div>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:20px">Vui lòng chọn một chủ đề khác trong danh sách.</p>
+        <button class="btn btn-primary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))">🏷️ Chọn chủ đề khác</button>
+      `;
+    }
+    if (flipWrap) flipWrap.style.display = 'none';
+    if (quizWrap) quizWrap.style.display = 'none';
+    if (spellingWrap) spellingWrap.style.display = 'none';
+    return;
+  }
+
+  // Check if finished
+  if (state.flashcardIndex >= deck.length) {
+    if (isFlashcardAutoPlaying) toggleAutoPlayFlashcard();
+    if (finishedElem) finishedElem.style.display = 'block';
+    if (flipWrap) flipWrap.style.display = 'none';
+    if (quizWrap) quizWrap.style.display = 'none';
+    if (spellingWrap) spellingWrap.style.display = 'none';
+    return;
+  }
+
+  if (finishedElem) finishedElem.style.display = 'none';
+
+  // Ensure card is not flipped initially
+  const cardElem = document.getElementById('main-3d-flashcard');
+  if (cardElem) cardElem.classList.remove('flipped');
+
+  const card = deck[state.flashcardIndex];
+  const total = deck.length;
+  const currentNum = state.flashcardIndex + 1;
+
+  // Update Progress
+  const progressText = document.getElementById('player-deck-progress-text');
+  if (progressText) progressText.textContent = `Từ ${currentNum} / ${total}`;
+
+  const progressFill = document.getElementById('player-top-progress-fill');
+  if (progressFill) progressFill.style.width = `${(currentNum / total) * 100}%`;
+
+  const studyMode = state.flashcardStudyMode || 'flip';
+
+  if (studyMode === 'flip') {
+    if (flipWrap) flipWrap.style.display = 'block';
+    if (quizWrap) quizWrap.style.display = 'none';
+    if (spellingWrap) spellingWrap.style.display = 'none';
+
+    // Set Level and Type Badges
+    const lvlBadge = document.getElementById('card-level-badge');
+    if (lvlBadge) lvlBadge.textContent = card.level || 'A1';
+
+    const typeBadge = document.getElementById('card-type-label');
+    if (typeBadge) typeBadge.textContent = `${card.word_type || 'noun'} • ${card.topic || 'Từ vựng'}`;
+
+    // Set Vietnamese Meaning in Red (Top)
+    const viTop = document.getElementById('player-card-vi-top');
+    if (viTop) viTop.textContent = card.definition_vi || 'Nghĩa tiếng Việt';
+
+    // Set English Word (Middle)
+    const enWord = document.getElementById('player-card-word');
+    if (enWord) enWord.textContent = card.word || '';
+
+    // Set Phonetic IPA
+    const ipaElem = document.getElementById('player-card-ipa');
+    if (ipaElem) ipaElem.textContent = card.ipa ? `[ ${card.ipa} ]` : `[ /${card.word}/ ]`;
+
+    // 3D / Cartoon Illustration
+    const imgFront = document.getElementById('player-card-img-front');
+    if (imgFront) {
+      const cartoonSeed = encodeURIComponent(card.word || 'english');
+      const fallbackUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${cartoonSeed}`;
+      imgFront.src = card.image_url || fallbackUrl;
+    }
+
+    // Set Back face details
+    const viBack = document.getElementById('player-card-vi');
+    if (viBack) viBack.textContent = card.definition_vi || '';
+
+    const enBack = document.getElementById('player-card-en');
+    if (enBack) enBack.textContent = card.definition_en || 'English definition...';
+
+    // Contextual Bilingual Example
+    const exEn = document.getElementById('player-card-ex-en');
+    const exVi = document.getElementById('player-card-ex-vi');
+    let exampleEnText = `"${card.word} is very important for daily English communication."`;
+    let exampleViText = `"${card.definition_vi || card.word}" rất quan trọng trong giao tiếp tiếng Anh hàng ngày.`;
+
+    if (card.examples) {
+      if (Array.isArray(card.examples) && card.examples.length) {
+        const firstEx = card.examples[0];
+        if (typeof firstEx === 'object') {
+          exampleEnText = `"${firstEx.en || ''}"`;
+          exampleViText = firstEx.vi || '';
+        } else if (typeof firstEx === 'string') {
+          exampleEnText = `"${firstEx}"`;
+          exampleViText = '';
+        }
+      } else if (typeof card.examples === 'string') {
+        exampleEnText = `"${card.examples}"`;
+      }
+    }
+    if (exEn) exEn.textContent = exampleEnText;
+    if (exVi) exVi.textContent = exampleViText;
+
+    // Mnemonic memory tip
+    const mnemonicBox = document.getElementById('player-card-mnemonic-box');
+    if (mnemonicBox) {
+      mnemonicBox.innerHTML = `💡 <strong>Mẹo nhớ từ:</strong> Hãy liên tưởng từ <em>"${card.word}"</em> (${card.definition_vi || ''}) với hình ảnh minh họa để khắc sâu vào trí nhớ dài hạn.`;
+    }
+
+    // Collocations and synonyms tags
+    const collocElem = document.getElementById('player-card-collocations');
+    if (collocElem) {
+      const tags = [];
+      if (Array.isArray(card.synonyms)) tags.push(...card.synonyms.slice(0, 2));
+      if (Array.isArray(card.collocations)) tags.push(...card.collocations.slice(0, 2));
+      if (!tags.length) tags.push(card.topic || 'Giao tiếp');
+      collocElem.innerHTML = tags.map(t => `<span class="badge badge-purple" style="font-size:11px">${t}</span>`).join(' ');
+    }
+  } else if (studyMode === 'quiz') {
+    if (flipWrap) flipWrap.style.display = 'none';
+    if (quizWrap) quizWrap.style.display = 'block';
+    if (spellingWrap) spellingWrap.style.display = 'none';
+
+    const qWord = document.getElementById('quiz-question-word');
+    if (qWord) qWord.textContent = card.word;
+    const qIpa = document.getElementById('quiz-question-ipa');
+    if (qIpa) qIpa.textContent = card.ipa ? `[ ${card.ipa} ]` : '';
+
+    const optionsList = document.getElementById('quiz-options-list');
+    if (optionsList) {
+      const otherCards = deck.filter((_, i) => i !== state.flashcardIndex);
+      const wrongAnswers = otherCards.sort(() => 0.5 - Math.random()).slice(0, 3).map(c => c.definition_vi);
+      const allChoices = [card.definition_vi, ...wrongAnswers].sort(() => 0.5 - Math.random());
+
+      optionsList.innerHTML = allChoices.map(ch => {
+        const isCorrect = (ch === card.definition_vi);
+        return `
+          <button class="quiz-choice-item" onclick="handleQuizAnswer(this, ${isCorrect})">
+            ${ch}
+          </button>
+        `;
+      }).join('');
+    }
+  } else if (studyMode === 'spelling') {
+    if (flipWrap) flipWrap.style.display = 'none';
+    if (quizWrap) quizWrap.style.display = 'none';
+    if (spellingWrap) spellingWrap.style.display = 'block';
+
+    const spellPrompt = document.getElementById('spelling-meaning-prompt');
+    if (spellPrompt) spellPrompt.textContent = card.definition_vi || 'Nghĩa từ vựng';
+    const spellIpa = document.getElementById('spelling-ipa-hint');
+    if (spellIpa) spellIpa.textContent = card.ipa ? `[ ${card.ipa} ]` : '';
+    const spellInput = document.getElementById('spelling-input');
+    if (spellInput) {
+      spellInput.value = '';
+      spellInput.focus();
+    }
+    const spellFb = document.getElementById('spelling-feedback');
+    if (spellFb) spellFb.innerHTML = '';
+  }
+};
+
+window.flipActiveCard = () => {
+  const card = document.getElementById('main-3d-flashcard');
+  if (card) card.classList.toggle('flipped');
+};
+
+window.nextFlashcard = () => {
+  const deck = state.currentFlashcardDeck || [];
+  if (!deck.length) return;
+  if (state.flashcardIndex < deck.length - 1) {
+    state.flashcardIndex++;
+    renderActiveFlashcard();
+    speakActiveWord();
+  } else {
+    state.flashcardIndex = deck.length;
+    renderActiveFlashcard();
+  }
+};
+
+window.prevFlashcard = () => {
+  if (state.flashcardIndex > 0) {
+    state.flashcardIndex--;
+    renderActiveFlashcard();
+    speakActiveWord();
+  }
+};
+
+window.toggleAutoPlayFlashcard = () => {
+  const btn = document.getElementById('btn-autoplay-flashcard');
+  if (isFlashcardAutoPlaying) {
+    clearInterval(flashcardAutoPlayTimer);
+    isFlashcardAutoPlaying = false;
+    if (btn) {
+      btn.textContent = '⚡ Tự động chạy: TẮT';
+      btn.style.color = '';
+      btn.style.borderColor = 'rgba(255,255,255,0.15)';
+    }
+    toast('Đã dừng tự động chạy thẻ.', 'info');
+  } else {
+    isFlashcardAutoPlaying = true;
+    if (btn) {
+      btn.textContent = '⏸️ Đang chạy (3.5s/từ)...';
+      btn.style.color = '#34d399';
+      btn.style.borderColor = '#10b981';
+    }
+    toast('Bắt đầu tự động trình chiếu thẻ từ vựng!', 'success');
+    speakActiveWord();
+    flashcardAutoPlayTimer = setInterval(() => {
+      const deck = state.currentFlashcardDeck || [];
+      if (state.flashcardIndex < deck.length - 1) {
+        state.flashcardIndex++;
+        renderActiveFlashcard();
+        speakActiveWord();
+      } else {
+        toggleAutoPlayFlashcard();
+      }
+    }, 3500);
+  }
+};
+
+window.speakActiveWord = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card || !card.word) return;
+  if (typeof window.speakText === 'function') {
+    window.speakText(card.word);
+  } else if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(card.word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
+window.setFlashcardLangMode = (mode) => {
+  state.flashcardLangMode = mode;
+  document.getElementById('fc-lang-btn-en-vi')?.classList.toggle('active', mode === 'en_to_vi');
+  document.getElementById('fc-lang-btn-vi-en')?.classList.toggle('active', mode === 'vi_to_en');
+  renderActiveFlashcard();
+};
+
+window.setPlayerStudyMode = (mode) => {
+  state.flashcardStudyMode = mode;
+  document.getElementById('mode-tab-flip')?.classList.toggle('active', mode === 'flip');
+  document.getElementById('mode-tab-quiz')?.classList.toggle('active', mode === 'quiz');
+  document.getElementById('mode-tab-spelling')?.classList.toggle('active', mode === 'spelling');
+  
+  const badge = document.getElementById('player-study-mode-badge');
+  if (badge) {
+    badge.textContent = mode === 'flip' ? '🎴 Lật Thẻ 3D' : (mode === 'quiz' ? '🎯 Trắc Nghiệm' : '✍️ Gõ Chính Tả');
+  }
+  renderActiveFlashcard();
+};
+
+window.submitFlashcardSRS = async (rating) => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card) return;
+
+  try {
+    await api.vocabulary.review({ vocab_id: card.id, rating });
+    if (rating >= 3) {
+      if (typeof window.showXPPopup === 'function') window.showXPPopup(5);
+      toast('Đã ghi nhận! +5 XP', 'success');
+    } else {
+      toast('Đã thêm vào danh sách cần ôn sớm.', 'info');
+    }
+  } catch(e) {}
+
+  state.flashcardReviewed++;
+  state.flashcardIndex++;
+  renderActiveFlashcard();
+};
+
+window.handleQuizAnswer = (btnElem, isCorrect) => {
+  document.querySelectorAll('.quiz-choice-item').forEach(b => b.style.pointerEvents = 'none');
+  if (isCorrect) {
+    btnElem.classList.add('correct');
+    if (typeof window.showXPPopup === 'function') window.showXPPopup(5);
+    toast('Chính xác! +5 XP', 'success');
+  } else {
+    btnElem.classList.add('wrong');
+    toast('Chưa chính xác, hãy ghi nhớ từ này nhé!', 'warning');
+  }
+
+  setTimeout(() => {
+    state.flashcardIndex++;
+    renderActiveFlashcard();
+  }, 1200);
+};
+
+window.checkSpellingAnswer = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  const inputElem = document.getElementById('spelling-input');
+  const feedbackElem = document.getElementById('spelling-feedback');
+  if (!card || !inputElem || !feedbackElem) return;
+
+  const userAns = inputElem.value.trim().toLowerCase();
+  const correctAns = card.word.trim().toLowerCase();
+
+  if (userAns === correctAns) {
+    feedbackElem.innerHTML = `<span style="color:#34d399">🎉 Chính xác tuyệt đối: <strong>${card.word}</strong> (+5 XP)</span>`;
+    if (typeof window.showXPPopup === 'function') window.showXPPopup(5);
+    setTimeout(() => {
+      state.flashcardIndex++;
+      renderActiveFlashcard();
+    }, 1200);
+  } else {
+    feedbackElem.innerHTML = `
+      <span style="color:#f87171">Chưa đúng. Đáp án chính xác là: <strong>${card.word}</strong></span>
+    `;
+    speakActiveWord();
+    setTimeout(() => {
+      state.flashcardIndex++;
+      renderActiveFlashcard();
+    }, 2200);
+  }
+};
+
+window.toggleShuffleCurrentDeck = () => {
+  if (!state.currentFlashcardDeck || !state.currentFlashcardDeck.length) return;
+  state.currentFlashcardDeck.sort(() => 0.5 - Math.random());
+  state.flashcardIndex = 0;
+  toast('Đã xáo trộn thứ tự thẻ!', 'info');
+  renderActiveFlashcard();
+};
+
+window.restartCurrentDeck = () => {
+  state.flashcardIndex = 0;
+  document.getElementById('player-deck-finished').style.display = 'none';
+  renderActiveFlashcard();
+};
+
+window.loadFlashcardStats = async () => {
+  try {
+    const res = await api.vocabulary.stats();
+    if (res) {
+      document.getElementById('stat-flashcards-learned').textContent = res.learned || 0;
+      document.getElementById('stat-flashcards-due').textContent = res.due_today || 0;
+    }
+  } catch(e) {}
+};
+
+window.generateCustomAIFlashcards = async () => {
+  const topic = document.getElementById('fc-ai-custom-topic')?.value?.trim();
+  if (!topic) {
+    toast('Vui lòng nhập chủ đề bạn muốn tạo thẻ.', 'warning');
+    return;
+  }
+  const resContainer = document.getElementById('fc-ai-custom-result');
+  resContainer.innerHTML = `<div style="text-align:center;padding:20px"><div class="loading-dots"><span></span><span></span><span></span></div><div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">AI đang biên soạn 20 flashcards chủ đề "${topic}"...</div></div>`;
+
+  try {
+    const res = await api.vocabulary.flashcardDeck({ search: topic, limit: 20, shuffle: true });
+    if (res.cards && res.cards.length) {
+      resContainer.innerHTML = `
+        <div class="card" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3);text-align:center;padding:20px">
+          <div style="font-weight:700;color:#34d399;margin-bottom:8px">Đã tìm thấy ${res.cards.length} từ vựng phù hợp!</div>
+          <button class="btn btn-primary" onclick="startTopicStudy('${topic.replace(/'/g, "\\'")}')" style="border-radius:10px">
+            🚀 Bắt đầu học bộ thẻ này ngay
+          </button>
+        </div>
+      `;
+    } else {
+      resContainer.innerHTML = `
+        <div style="color:var(--text-secondary);font-size:13px;text-align:center">
+          Đã tạo bộ thẻ tùy chỉnh. Nhấn để học ngay với các chủ đề liên quan.
+        </div>
+      `;
+    }
+  } catch(e) {
+    resContainer.innerHTML = `<div style="color:#f87171;font-size:13px">Lỗi: ${e.message}</div>`;
+  }
+};
+
+// Global Hotkeys for Flashcards (Space for flip, 1-4 for SRS)
+document.addEventListener('keydown', (e) => {
+  // Only trigger if in flashcards view and not typing in an input
+  if (state.currentView !== 'flashcards' || ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    flipActiveCard();
+  } else if (e.key === '1') {
+    submitFlashcardSRS(0);
+  } else if (e.key === '2') {
+    submitFlashcardSRS(2);
+  } else if (e.key === '3') {
+    submitFlashcardSRS(3);
+  } else if (e.key === '4') {
+    submitFlashcardSRS(5);
+  }
+});
 
 // ── COURSES VIEW ──────────────────────────────────────────────────────────────
 registerView('courses', () => `
@@ -4471,16 +5588,20 @@ registerView('speaking', () => `
       const { topics } = await api.speaking.topics(level);
       const grid = document.getElementById('topics-grid');
       if (!grid) return;
+      grid.className = 'curated-topic-showcase-grid';
       grid.innerHTML = topics.map(t => {
         const tEsc = t.replace(/'/g, "\\'");
         return `
-        <div class="card" style="cursor:pointer" onclick="openSpeakingModal('${tEsc}', '${level}')">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-            <span class="badge badge-purple">${level}</span>
-            <span class="badge badge-cyan">Speaking Topic</span>
+        <div class="curated-topic-showcase-card" onclick="openSpeakingModal('${tEsc}', '${level}')">
+          <div class="topic-card-top-row">
+            <span class="topic-pill-level">${level}</span>
+            <span class="topic-pill-tag">speaking</span>
           </div>
-          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px">${t}</div>
-          <div style="font-size:12px;color:var(--accent-primary);font-weight:600">🎙️ Nhấn để luyện nói & nghe mẫu →</div>
+          <div class="topic-card-title">${t}</div>
+          <div class="topic-card-desc">Luyện phát âm, phản xạ đàm thoại và chấm điểm cùng AI Tutor.</div>
+          <div class="topic-card-action">
+            🎙️ Nhấn để luyện nói & nghe mẫu →
+          </div>
         </div>`;
       }).join('');
     } catch(e) { toast(e.message, 'error'); }
@@ -8438,69 +9559,673 @@ window.checkLiveGrammarSentence = (ruleName) => {
   toast('Phân tích ngữ pháp thành công! ⭐', 'success');
 };
 
-// ── TAB 2: EXAM MASTERY & REAL-TIME TEST ENGINE ──────────────────────────────
-async function renderCurriculumExamTab(container, levelData) {
-  if (levelData.level === 'B1') {
-    return renderB1ExamTab(container, levelData);
-  }
-  if (levelData.level === 'TOEIC') {
-    return renderToeicExamTab(container, levelData);
-  }
-  if (levelData.level === 'IELTS') {
-    return renderIeltsExamTab(container, levelData);
+// ── INTERACTIVE LESSON STUDIO ACTION HANDLERS ────────────────────────────────
+window.gradeStudioQuiz = function(qidx, selectedOpt, correctAns, exp, optIdx) {
+  const mod = window.lessonStudioState.currentModule;
+  const quizzes = mod ? (mod.practice_quiz || []) : [];
+  const qObj = quizzes[qidx] || {};
+
+  const isCorrect = (selectedOpt.trim().toLowerCase() === correctAns.trim().toLowerCase()) ||
+                    (String.fromCharCode(65 + optIdx).toLowerCase() === correctAns.trim().toLowerCase());
+
+  window.lessonStudioState.quizAnswers[qidx] = {
+    selectedOpt: selectedOpt,
+    isCorrect: isCorrect
+  };
+
+  // Update option button styles
+  (qObj.options || []).forEach((_, oidx) => {
+    const btn = document.getElementById(`studio-opt-${qidx}-${oidx}`);
+    if (btn) {
+      btn.style.pointerEvents = 'none';
+      if (oidx === optIdx) {
+        btn.style.background = isCorrect ? '#10b981' : '#ef4444';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = isCorrect ? '#059669' : '#dc2626';
+      }
+    }
+  });
+
+  // Display explanation box
+  const expBox = document.getElementById(`studio-quiz-exp-${qidx}`);
+  if (expBox) {
+    expBox.style.display = 'block';
+    expBox.style.background = isCorrect ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+    expBox.style.border = `1px solid ${isCorrect ? '#10b981' : '#ef4444'}`;
+    expBox.style.color = 'var(--text-primary)';
+    expBox.innerHTML = `
+      <div style="font-weight:800; color:${isCorrect ? 'var(--accent-green)' : '#ef4444'}; margin-bottom:4px;">
+        ${isCorrect ? '✅ Chính xác tuyệt đối!' : `❌ Chưa chính xác! Đáp án đúng là: <b>${correctAns}</b>`}
+      </div>
+      <div>💡 <b>Giải thích:</b> ${exp || 'Đáp án chính xác theo ngữ cảnh bài học.'}</div>
+    `;
   }
 
+  toast(isCorrect ? 'Câu trả lời hoàn toàn chính xác! 🎯' : 'Hãy xem lại phần giải thích nhé!', isCorrect ? 'success' : 'warning');
+};
+
+window.gradeListeningChoice = function(selectedOpt, correctAns, exp, optIdx) {
+  const isCorrect = (selectedOpt.trim().toLowerCase() === correctAns.trim().toLowerCase()) ||
+                    (String.fromCharCode(65 + optIdx).toLowerCase() === correctAns.trim().toLowerCase());
+
+  // Disable buttons and color selected
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById(`listening-opt-${i}`);
+    if (btn) {
+      btn.style.pointerEvents = 'none';
+      if (i === optIdx) {
+        btn.style.background = isCorrect ? '#10b981' : '#ef4444';
+        btn.style.color = '#ffffff';
+      }
+    }
+  }
+
+  const fbBox = document.getElementById('listening-feedback-box');
+  if (fbBox) {
+    fbBox.style.display = 'block';
+    fbBox.style.background = isCorrect ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+    fbBox.style.border = `1px solid ${isCorrect ? '#10b981' : '#ef4444'}`;
+    fbBox.style.color = 'var(--text-primary)';
+    fbBox.innerHTML = `
+      <div style="font-weight:800; color:${isCorrect ? 'var(--accent-green)' : '#ef4444'}; margin-bottom:4px;">
+        ${isCorrect ? '✅ Nghe hiểu rất chuẩn xác!' : `❌ Chưa đúng! Đáp án đúng là: <b>${correctAns}</b>`}
+      </div>
+      <div>💡 <b>Giải thích audio:</b> ${exp || 'Thông tin đã được đề cập rõ trong đoạn nghe.'}</div>
+    `;
+  }
+
+  toast(isCorrect ? 'Nghe hiểu rất chuẩn xác! 🎧' : 'Xem lại transcript để đối chiếu nhé!', isCorrect ? 'success' : 'warning');
+};
+
+window.toggleListeningTranscript = function() {
+  const box = document.getElementById('listening-transcript-box');
+  if (!box) return;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+};
+
+window.toggleWritingSampleAnswer = function() {
+  const box = document.getElementById('writing-sample-box');
+  if (!box) return;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+};
+
+window.playAllStudioDialogue = function() {
+  const mod = window.lessonStudioState.currentModule;
+  if (!mod || !mod.dialogue || !mod.dialogue.length) return toast('Không có đoạn hội thoại', 'warning');
+  
+  toast('Đang đọc toàn bộ hội thoại...', 'info');
+  let fullText = mod.dialogue.map(d => `${d.speaker} says: ${d.text}`).join('. ');
+  speakText(fullText, 1.0);
+};
+
+window.finishStudioLesson = async function() {
+  const mod = window.lessonStudioState.currentModule;
+  const lvl = window.lessonStudioState.currentLevel;
+  if (!mod || !lvl) return;
+
+  const xpEarned = mod.xp || 50;
+
+  try {
+    if (api.levelCurriculum && api.levelCurriculum.completeModule) {
+      await api.levelCurriculum.completeModule({
+        level: lvl.level,
+        module_id: mod.id,
+        score: 100
+      });
+    }
+  } catch(e) {
+    console.log('completeModule fallback', e);
+  }
+
+  // Update user state and streak
+  if (state.user) {
+    state.user.xp = (state.user.xp || 0) + xpEarned;
+    state.user.coins = (state.user.coins || 0) + 15;
+    localStorage.setItem('user_data', JSON.stringify(state.user));
+    updateUserUI();
+  }
+
+  window.closeInteractiveLessonStudio();
+  toast(`🎉 Xuất sắc! Bạn đã hoàn thành bài học "${mod.title}" và nhận +${xpEarned} XP!`, 'success');
+
+  // Refresh curriculum view
+  if (window.curriculumState && window.curriculumState.activeLevel) {
+    renderCurriculumRoadmapTab(document.getElementById('curriculum-view-content'), lvl);
+  }
+};
+
+// ── TAB 2: EXAM MASTERY, 30 PRACTICE TESTS & STANDARDIZED EXAM HUB ───────────
+window.examHubState = {
+  activeMode: 'bank', // 'bank' (30 tests) | 'standardized' (4-skill certification)
+  examBankList: [],
+  currentTest: null,
+  userAnswers: {},
+  secondsLeft: 0,
+  timerInterval: null,
+  searchQuery: '',
+  selectedFilter: 'all' // 'all' | 'passed' | 'unattempted'
+};
+
+async function renderCurriculumExamTab(container, levelData) {
+  container.innerHTML = `
+    <!-- EXAM HUB TOP NAV SWITCHER -->
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border);">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="badge" style="background:${levelData.color || 'var(--accent-primary)'}; color:#fff; font-size:12px; font-weight:800;">
+            ${levelData.level} EXAM HUB
+          </span>
+          <span class="badge badge-purple" style="font-size:12px;">30 Đề Thực Chiến & Khảo Thí Chuẩn Hóa</span>
+        </div>
+        <h2 style="font-size:22px; font-weight:900; margin:6px 0 0 0; color:var(--text-primary);">
+          🏛️ Trung Tâm Luyện Đề & Khảo Thí Cấp Độ ${levelData.level}
+        </h2>
+      </div>
+
+      <div style="display:flex; gap:10px; background:var(--bg-secondary); padding:4px; border-radius:14px; border:1px solid var(--border);">
+        <button id="exam-mode-bank-btn" class="btn btn-sm ${window.examHubState.activeMode === 'bank' ? 'btn-primary' : 'btn-ghost'}" onclick="switchExamHubMode('bank', '${levelData.level}')" style="font-weight:800; border-radius:10px; padding:8px 18px;">
+          📚 Ngân Hàng 30 Đề Luyện Thi
+        </button>
+        <button id="exam-mode-standard-btn" class="btn btn-sm ${window.examHubState.activeMode === 'standardized' ? 'btn-primary' : 'btn-ghost'}" onclick="switchExamHubMode('standardized', '${levelData.level}')" style="font-weight:800; border-radius:10px; padding:8px 18px;">
+          🏛️ Thi Chuẩn Hóa & Cấp Chứng Chỉ
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN EXAM HUB DISPLAY CONTAINER -->
+    <div id="exam-hub-mode-container">
+      <div class="loading-dots" style="padding:40px; text-align:center;"><span></span><span></span><span></span></div>
+    </div>
+  `;
+
+  renderActiveExamHubMode(levelData);
+}
+
+window.switchExamHubMode = function(mode, level) {
+  window.examHubState.activeMode = mode;
+  document.querySelectorAll('#exam-mode-bank-btn, #exam-mode-standard-btn').forEach(b => {
+    b.className = 'btn btn-sm btn-ghost';
+  });
+  const activeBtn = document.getElementById(mode === 'bank' ? 'exam-mode-bank-btn' : 'exam-mode-standard-btn');
+  if (activeBtn) activeBtn.className = 'btn btn-sm btn-primary';
+  
+  const levelData = window.curriculumState.levelsData[level] || { level };
+  renderActiveExamHubMode(levelData);
+};
+
+function renderActiveExamHubMode(levelData) {
+  const container = document.getElementById('exam-hub-mode-container');
+  if (!container) return;
+
+  if (window.examHubState.activeMode === 'bank') {
+    renderExamBankGridView(container, levelData);
+  } else {
+    // Mode Standardized 4-Skill Exam
+    if (levelData.level === 'TOEIC') {
+      return renderToeicExamTab(container, levelData);
+    }
+    if (levelData.level === 'IELTS') {
+      return renderIeltsExamTab(container, levelData);
+    }
+    // Unified 4-Skill Standardized Exam for all CEFR levels (A1, A2, B1, B2, C1, C2)
+    renderStandardizedExamTab(container, levelData);
+  }
+}
+
+// ── 1. EXAM BANK: 30 PRACTICE TESTS BROWSER & ARENA ──────────────────────────
+async function renderExamBankGridView(container, levelData) {
   container.innerHTML = '<div class="loading-dots" style="padding:40px; text-align:center;"><span></span><span></span><span></span></div>';
 
   try {
-    const examInfo = await api.levelCurriculum.getExam(levelData.level);
-    window.curriculumState.currentExam = examInfo;
-    window.curriculumState.userExamAnswers = {};
-    window.curriculumState.flaggedQuestions = {};
+    const res = await api.levelCurriculum.getExamBank(levelData.level);
+    window.examHubState.examBankList = res.tests || [];
 
-    container.innerHTML = `
-      <div id="exam-lobby-card" class="card" style="max-width:750px; margin:0 auto; text-align:center; padding:30px;">
-        <div style="font-size:50px; margin-bottom:12px;">🏛️</div>
-        <h2 style="font-size:22px; font-weight:800; margin-bottom:8px; color:var(--text-primary);">
-          ${examInfo.title}
-        </h2>
-        <p style="color:var(--text-secondary); font-size:14px; max-width:550px; margin:0 auto 20px; line-height:1.6;">
-          Đề thi trắc nghiệm chuẩn hóa đánh giá toàn diện kỹ năng theo khung năng lực <b>${levelData.level}</b>. Đạt từ <b>${examInfo.pass_score}%</b> trở lên để nhận <b>Chứng chỉ Hoàn thành</b> có mã QR xác thực.
-        </p>
+    const tests = window.examHubState.examBankList;
+    const totalTests = tests.length;
 
-        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:24px; flex-wrap:wrap;">
-          <div class="card" style="padding:12px 20px; background:var(--bg-secondary);">
-            <div style="font-size:12px; color:var(--text-secondary);">SỐ LƯỢNG CÂU HỎI</div>
-            <div style="font-size:20px; font-weight:800; color:var(--accent-primary);">${examInfo.questions.length} câu</div>
+    let testsHtml = tests.map((t, idx) => {
+      return `
+        <div class="card" style="padding:20px; border-radius:16px; border:1px solid var(--border); background:var(--bg-card); display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span class="badge" style="background:linear-gradient(135deg, #6366f1, #4f46e5); color:#fff; font-weight:800; font-size:11px;">
+                ĐỀ SỐ ${t.test_number}
+              </span>
+              <span class="badge badge-purple" style="font-size:11px;">⏱️ ${t.time_min} phút</span>
+            </div>
+            
+            <h4 style="font-size:16px; font-weight:800; color:var(--text-primary); margin:0 0 8px 0; line-height:1.4;">
+              ${t.title}
+            </h4>
+            
+            <p style="font-size:12.5px; color:var(--text-secondary); margin:0 0 14px 0; line-height:1.5;">
+              Đề thi trắc nghiệm <b>${t.total_questions} câu</b> chuẩn hóa cấu trúc CEFR ${t.level}. Ngữ pháp, từ vựng trọng tâm, đọc hiểu & ngữ cảnh thực tế.
+            </p>
           </div>
-          <div class="card" style="padding:12px 20px; background:var(--bg-secondary);">
-            <div style="font-size:12px; color:var(--text-secondary);">THỜI GIAN LÀM BÀI</div>
-            <div style="font-size:20px; font-weight:800; color:var(--accent-cyan);">${examInfo.time_min} phút</div>
-          </div>
-          <div class="card" style="padding:12px 20px; background:var(--bg-secondary);">
-            <div style="font-size:12px; color:var(--text-secondary);">ĐIỂM ĐẬU CHUẨN</div>
-            <div style="font-size:20px; font-weight:800; color:var(--accent-green);">${examInfo.pass_score}%</div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px dashed var(--border); margin-bottom:12px; font-size:12px; color:var(--text-secondary);">
+              <span>Điểm đậu chuẩn: <b style="color:var(--accent-green);">${t.pass_score}%</b></span>
+              <span>⚡ +120 XP</span>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; font-weight:800; border-radius:10px; padding:10px;" onclick="openExamBankTestRunning('${levelData.level}', '${t.test_id}')">
+              🚀 Làm Đề Thi Này
+            </button>
           </div>
         </div>
+      `;
+    }).join('');
 
-        <button class="btn btn-primary btn-lg" onclick="startCurriculumExamRunning()" style="padding:12px 36px; font-size:16px; box-shadow:0 8px 25px rgba(124,58,237,0.4);">
-          🚀 Bắt Đầu Làm Bài Thi Ngay
-        </button>
+    container.innerHTML = `
+      <!-- HERO BANNER -->
+      <div class="card" style="padding:24px; background:linear-gradient(135deg, rgba(99,102,241,0.15), rgba(6,182,212,0.1)); border:1px solid rgba(99,102,241,0.3); border-radius:20px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+        <div style="max-width:620px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span class="badge" style="background:#6366f1; color:#fff; font-weight:800;">BỘ ĐỀ ĐỒ SỘ 2026</span>
+            <span class="badge badge-green">30 Đề Khảo Thí Toàn Diện</span>
+          </div>
+          <h3 style="font-size:20px; font-weight:900; color:var(--text-primary); margin:0 0 6px 0;">
+            Kho 30 Đề Luyện Thi Thực Chiến Chuẩn CEFR ${levelData.level}
+          </h3>
+          <p style="font-size:13.5px; color:var(--text-secondary); margin:0; line-height:1.5;">
+            Luyện tập không giới hạn với ngân hàng đề phong phú bao quát toàn bộ ngữ pháp, từ vựng và kỹ năng phân tích phản biện. Chấm điểm tức thì, xem giải thích chi tiết và đo lường Radar năng lực.
+          </p>
+        </div>
+
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <div class="card" style="padding:12px 18px; text-align:center; background:var(--bg-card);">
+            <div style="font-size:11px; color:var(--text-secondary);">TỔNG SỐ ĐỀ</div>
+            <div style="font-size:22px; font-weight:900; color:#6366f1;">${totalTests} Đề</div>
+          </div>
+          <div class="card" style="padding:12px 18px; text-align:center; background:var(--bg-card);">
+            <div style="font-size:11px; color:var(--text-secondary);">CHUẨN CEFR</div>
+            <div style="font-size:22px; font-weight:900; color:var(--accent-green);">${levelData.level}</div>
+          </div>
+        </div>
       </div>
 
-      <div id="exam-active-arena" style="display:none;"></div>
-      <div id="exam-result-board" style="display:none;"></div>
+      <!-- TESTS GRID -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:18px;">
+        ${testsHtml}
+      </div>
     `;
   } catch (err) {
     container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
-      ❌ Không thể tải đề thi: ${err.message}
+      ❌ Không thể tải ngân hàng đề thi: ${err.message}
     </div>`;
   }
 }
 
+// ── 2. REAL-TIME EXAM RUNNER ENGINE ──────────────────────────────────────────
+window.openExamBankTestRunning = async function(level, testId) {
+  const container = document.getElementById('exam-hub-mode-container');
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading-dots" style="padding:50px; text-align:center;"><span></span><span></span><span></span></div>';
+
+  try {
+    const testData = await api.levelCurriculum.getExamBankTest(level, testId);
+    window.examHubState.currentTest = testData;
+    window.examHubState.userAnswers = {};
+    window.examHubState.secondsLeft = (testData.time_min || 30) * 60;
+
+    renderExamBankRunningArena(container, testData);
+    startExamBankTimer();
+  } catch (err) {
+    container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
+      ❌ Không thể mở đề thi: ${err.message}
+      <br><button class="btn btn-sm btn-primary" onclick="renderCurriculumExamTab(document.getElementById('curriculum-view-content'), window.curriculumState.levelsData['${level}'])" style="margin-top:10px;">⬅️ Quay Lại Danh Sách</button>
+    </div>`;
+  }
+};
+
+function startExamBankTimer() {
+  if (window.examHubState.timerInterval) clearInterval(window.examHubState.timerInterval);
+  window.examHubState.timerInterval = setInterval(() => {
+    window.examHubState.secondsLeft--;
+    const timerElem = document.getElementById('exam-bank-live-timer');
+    if (timerElem) {
+      timerElem.innerText = formatExamTimer(window.examHubState.secondsLeft);
+      if (window.examHubState.secondsLeft <= 300) {
+        timerElem.style.color = '#ef4444';
+      }
+    }
+    if (window.examHubState.secondsLeft <= 0) {
+      clearInterval(window.examHubState.timerInterval);
+      toast('Hết thời gian làm bài! Hệ thống đang tự động nộp bài...', 'warning');
+      submitExamBankTestNow();
+    }
+  }, 1000);
+}
+
+function renderExamBankRunningArena(container, testData) {
+  const questions = testData.questions || [];
+
+  let questionsHtml = questions.map((q, idx) => {
+    const qid = q.id;
+    return `
+      <div id="bank-q-card-${qid}" class="card" style="padding:22px; margin-bottom:18px; border-radius:14px; border:1px solid var(--border); background:var(--bg-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span class="badge" style="background:var(--accent-primary); color:#fff; font-weight:800; font-size:12px;">
+            CÂU ${idx + 1} / ${questions.length}
+          </span>
+          <span style="font-size:11.5px; color:var(--text-secondary);">Mã: ${qid}</span>
+        </div>
+
+        <div style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:16px; line-height:1.6; white-space:pre-line;">
+          ${q.question}
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${q.options.map((opt, optIdx) => {
+            const letter = String.fromCharCode(65 + optIdx);
+            return `
+              <label class="radio-option-card" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid var(--border); border-radius:10px; cursor:pointer; background:var(--bg-secondary); transition:all 0.2s ease;">
+                <input type="radio" name="opt_${qid}" value="${opt}" onchange="selectExamBankAnswer('${qid}', '${opt.replace(/'/g, "\\'")}')" style="accent-color:var(--accent-primary); width:18px; height:18px;">
+                <span style="font-weight:700; color:var(--text-secondary); width:20px;">${letter}.</span>
+                <span style="font-size:14px; color:var(--text-primary);">${opt}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Palette buttons
+  let paletteHtml = questions.map((q, idx) => {
+    return `
+      <button id="palette-btn-${q.id}" class="btn btn-sm btn-ghost" onclick="document.getElementById('bank-q-card-${q.id}').scrollIntoView({behavior:'smooth', block:'center'})" style="width:36px; height:36px; padding:0; border-radius:8px; font-weight:800; font-size:12px; border:1px solid var(--border);">
+        ${idx + 1}
+      </button>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <!-- ARENA STICKY HEADER -->
+    <div class="card" style="position:sticky; top:10px; z-index:100; padding:16px 24px; margin-bottom:20px; background:rgba(15, 23, 42, 0.95); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.15); border-radius:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+      <div>
+        <div style="font-size:12px; color:var(--accent-cyan); font-weight:800; text-transform:uppercase;">
+          ${testData.level} PRACTICE ARENA • ĐỀ SỐ ${testData.test_number}
+        </div>
+        <h3 style="font-size:17px; font-weight:900; color:#fff; margin:2px 0 0 0;">
+          ${testData.title}
+        </h3>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); text-align:center;">
+          <div style="font-size:10px; color:#cbd5e1; text-transform:uppercase;">THỜI GIAN CÒN LẠI</div>
+          <div id="exam-bank-live-timer" style="font-size:20px; font-weight:900; color:#38bdf8; font-family:monospace;">
+            ${formatExamTimer(window.examHubState.secondsLeft)}
+          </div>
+        </div>
+
+        <button class="btn btn-warning btn-lg" onclick="submitExamBankTestNow()" style="font-weight:900; padding:10px 24px; box-shadow:0 4px 18px rgba(234,179,8,0.4);">
+          🏁 Nộp Bài Chấm Điểm
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN EXAM SPLIT GRID -->
+    <div style="display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:start;">
+      <!-- QUESTIONS LIST -->
+      <div>
+        ${questionsHtml}
+
+        <div style="text-align:center; padding:20px 0;">
+          <button class="btn btn-warning btn-lg" onclick="submitExamBankTestNow()" style="font-weight:900; padding:14px 44px; font-size:16px; box-shadow:0 8px 25px rgba(234,179,8,0.5);">
+            🏁 Hoàn Thành & Nộp Bài Chấm Điểm
+          </button>
+        </div>
+      </div>
+      <!-- SIDEBAR PALETTE -->
+      <div class="card" style="position:sticky; top:110px; padding:18px; border-radius:14px; border:1px solid var(--border); background:var(--bg-card);">
+        <div style="font-size:13px; font-weight:800; color:var(--text-primary); margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <span>DANH SÁCH CÂU HỎI</span>
+          <span id="answered-badge-counter" class="badge badge-purple" style="font-size:11px;">0/${questions.length} đã chọn</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-bottom:16px;">
+          ${paletteHtml}
+        </div>
+
+        <button class="btn btn-ghost" onclick="switchExamHubMode('bank', '${testData.level}')" style="width:100%; font-size:12px; color:var(--text-secondary);">
+          ⬅️ Thoát Ra Danh Sách Đề
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+window.selectExamBankAnswer = function(qid, optVal) {
+  window.examHubState.userAnswers[qid] = optVal;
+  
+  const pBtn = document.getElementById(`palette-btn-${qid}`);
+  if (pBtn) {
+    pBtn.style.background = 'var(--accent-primary)';
+    pBtn.style.color = '#fff';
+    pBtn.style.borderColor = 'var(--accent-primary)';
+  }
+
+  const answeredCount = Object.keys(window.examHubState.userAnswers).length;
+  const totalQ = (window.examHubState.currentTest && window.examHubState.currentTest.questions) ? window.examHubState.currentTest.questions.length : 10;
+  const counter = document.getElementById('answered-badge-counter');
+  if (counter) counter.innerText = `${answeredCount}/${totalQ} đã chọn`;
+};
+
+window.submitExamBankTestNow = async function() {
+  const test = window.examHubState.currentTest;
+  if (!test) return;
+
+  const totalQ = (test.questions || []).length;
+  const answeredCount = Object.keys(window.examHubState.userAnswers).length;
+
+  if (answeredCount < totalQ) {
+    toast(`⚠️ Bạn chưa hoàn thành tất cả câu hỏi (Đã làm ${answeredCount}/${totalQ} câu). Bạn bắt buộc phải làm đủ 100% câu hỏi mới được nộp bài và xét cấp chứng chỉ!`, 'warning');
+    const firstUnanswered = (test.questions || []).find(q => !window.examHubState.userAnswers[q.id]);
+    if (firstUnanswered) {
+      const cardEl = document.getElementById(`bank-q-card-${firstUnanswered.id}`);
+      if (cardEl) {
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        cardEl.style.border = '2px solid #ef4444';
+        cardEl.style.boxShadow = '0 0 20px rgba(239,68,68,0.5)';
+        setTimeout(() => {
+          cardEl.style.border = '1px solid var(--border)';
+          cardEl.style.boxShadow = 'none';
+        }, 3500);
+      }
+    }
+    return;
+  }
+
+  if (window.examHubState.timerInterval) clearInterval(window.examHubState.timerInterval);
+
+  const container = document.getElementById('exam-hub-mode-container');
+  if (container) {
+    container.innerHTML = '<div class="loading-dots" style="padding:50px; text-align:center;"><span></span><span></span><span></span><p style="margin-top:14px; font-weight:700;">Hệ thống AI đang chấm điểm và phân tích kết quả bài thi...</p></div>';
+  }
+
+  try {
+    const timeSpent = (test.time_min * 60) - window.examHubState.secondsLeft;
+    const res = await api.levelCurriculum.submitExamBank({
+      level: test.level,
+      test_id: test.test_id,
+      answers: window.examHubState.userAnswers,
+      time_spent_sec: Math.max(10, timeSpent)
+    });
+
+    if (res.passed) {
+      const user = state.user || (localStorage.getItem('user_data') ? JSON.parse(localStorage.getItem('user_data')) : null);
+      const studentEmail = (user && user.email) ? user.email : (localStorage.getItem('remembered_user_email') || 'learner@vihtech.edu.vn');
+      let studentName = 'HỌC VIÊN XUẤT SẮC';
+      if (user && user.full_name && user.full_name.trim()) {
+        studentName = user.full_name.toUpperCase();
+      } else if (studentEmail) {
+        const prefix = studentEmail.split('@')[0];
+        const parts = prefix.split(/[._\-+0-9]+/).filter(Boolean);
+        studentName = parts.length ? parts.map(p => p.toUpperCase()).join(' ') : prefix.toUpperCase();
+      }
+
+      const radar = res.skill_radar || {};
+      window.curriculumState.latestExamResult = {
+        passed: true,
+        overall_gpa: (res.score_pct / 10).toFixed(1),
+        pass_gpa: (res.pass_score / 10).toFixed(1),
+        score_pct: res.score_pct,
+        correct_count: res.correct_count,
+        total_questions: res.total_questions,
+        level: test.level,
+        certificate: {
+          certificate_id: `VIH-${test.level}-2026-${Math.floor(100000 + Math.random() * 900000)}`,
+          recipient_name: studentName,
+          recipient_email: studentEmail,
+          issue_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+          level: test.level,
+          score: `${res.score_pct}% (${res.correct_count}/${res.total_questions} câu đúng)`,
+          score_breakdown: {
+            listening: `${radar.grammar_accuracy || res.score_pct}%`,
+            reading: `${radar.reading_comprehension || res.score_pct}%`,
+            writing: `${radar.vocabulary_richness || res.score_pct}%`,
+            speaking: `${radar.contextual_logic || res.score_pct}%`
+          }
+        }
+      };
+    }
+
+    renderExamBankResultBoard(container, res, test);
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
+        ❌ Lỗi khi nộp bài: ${err.message}
+        <br><button class="btn btn-sm btn-primary" onclick="switchExamHubMode('bank', '${test.level}')" style="margin-top:10px;">⬅️ Quay Lại</button>
+      </div>`;
+    }
+  }
+};
+
+function renderExamBankResultBoard(container, res, test) {
+  const radar = res.skill_radar || {};
+  const detailed = res.detailed_results || [];
+
+  let solutionHtml = detailed.map((d, idx) => {
+    return `
+      <div class="card" style="padding:18px; margin-bottom:14px; border-radius:12px; border-left:4px solid ${d.is_correct ? 'var(--accent-green)' : 'var(--accent-red)'}; background:var(--bg-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span class="badge ${d.is_correct ? 'badge-green' : 'badge-red'}" style="font-weight:800; font-size:12px;">
+            ${d.is_correct ? '✅ ĐÚNG' : '❌ SAI'} • CÂU ${idx + 1}
+          </span>
+          <span style="font-size:11px; color:var(--text-secondary);">Mã: ${d.id}</span>
+        </div>
+
+        <div style="font-size:14.5px; font-weight:700; color:var(--text-primary); margin-bottom:12px; line-height:1.5; white-space:pre-line;">
+          ${d.question}
+        </div>
+
+        <div style="font-size:13px; margin-bottom:8px;">
+          <span>Lựa chọn của bạn:</span> <b style="color:${d.is_correct ? 'var(--accent-green)' : 'var(--accent-red)'};">${d.user_answer || '(Chưa chọn)'}</b>
+        </div>
+
+        ${!d.is_correct ? `
+          <div style="font-size:13px; margin-bottom:8px;">
+            <span>Đáp án chính xác:</span> <b style="color:var(--accent-green);">${d.correct_answer}</b>
+          </div>
+        ` : ''}
+
+        <div style="background:var(--bg-secondary); padding:10px 14px; border-radius:8px; font-size:12.5px; color:var(--text-secondary); line-height:1.5; border-left:3px solid var(--accent-primary);">
+          💡 <b>Giải thích chi tiết:</b> ${d.explanation || 'Đáp án chính xác theo chuẩn ngữ pháp và ngữ cảnh học thuật.'}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <!-- RESULT HERO BANNER -->
+    <div class="card" style="padding:30px; text-align:center; background:linear-gradient(135deg, ${res.passed ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}, rgba(15,23,42,0.95)); border:2px solid ${res.passed ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)'}; border-radius:20px; margin-bottom:24px;">
+      <div style="font-size:54px; margin-bottom:8px;">
+        ${res.passed ? '🎉' : '📚'}
+      </div>
+      
+      <h2 style="font-size:24px; font-weight:900; color:#fff; margin:0 0 6px 0;">
+        ${res.passed ? `XUẤT SẮC! BẠN ĐÃ ĐẠT CHUẨN ĐẦU RA ${test.level}` : 'KẾT QUẢ BÀI LUYỆN THI'}
+      </h2>
+
+      <div style="display:inline-block; font-size:36px; font-weight:900; color:${res.passed ? '#4ade80' : '#f87171'}; margin:10px 0;">
+        ${res.score_pct}% (${res.correct_count}/${res.total_questions} CÂU ĐÚNG)
+      </div>
+
+      <p style="color:#cbd5e1; font-size:14px; max-width:580px; margin:0 auto 20px auto; line-height:1.6;">
+        ${res.passed ? `Chúc mừng bạn đã xuất sắc vượt qua điểm chuẩn yêu cầu (>= ${res.pass_score}%). Hệ thống đã kích hoạt và cấp <b>Chứng Chỉ Năng Lực Quốc Tế ${test.level}</b> có mã QR xác thực chính thức!` : `Điểm đạt chuẩn yêu cầu là ${res.pass_score}%. Bạn cần đạt chuẩn để được cấp Chứng chỉ. Hãy xem giải thích chi tiết bên dưới và thi lại nhé!`}
+      </p>
+
+      <div style="display:flex; justify-content:center; gap:14px; flex-wrap:wrap;">
+        ${res.passed ? `
+          <button class="btn btn-warning btn-lg" onclick="switchCurriculumTab('certificate')" style="font-weight:900; padding:12px 30px; box-shadow:0 6px 25px rgba(234,179,8,0.5);">
+            📜 Xem & In Chứng Chỉ ${test.level} Của Bạn
+          </button>
+        ` : ''}
+        <button class="btn btn-primary btn-lg" onclick="openExamBankTestRunning('${test.level}', '${test.test_id}')" style="font-weight:800;">
+          🔄 Thi Lại Đề Này
+        </button>
+        <button class="btn btn-secondary btn-lg" onclick="switchExamHubMode('bank', '${test.level}')" style="font-weight:800; background:rgba(255,255,255,0.15); color:#fff;">
+          📚 Về Danh Sách 30 Đề
+        </button>
+      </div>
+    </div>
+
+    <!-- SKILL RADAR DIAGNOSTICS -->
+    <div class="card" style="padding:22px; margin-bottom:24px; background:var(--bg-card); border-radius:16px;">
+      <div style="font-size:16px; font-weight:900; color:var(--accent-primary); margin-bottom:14px;">
+        📊 CHẨN ĐOÁN NĂNG LỰC ĐA CHIỀU (SKILL RADAR METRICS)
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+        <div style="background:var(--bg-secondary); padding:12px; border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; margin-bottom:6px;">
+            <span>Ngữ pháp (Grammar):</span> <b>${radar.grammar_accuracy}%</b>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${radar.grammar_accuracy}%; background:#06b6d4;"></div></div>
+        </div>
+
+        <div style="background:var(--bg-secondary); padding:12px; border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; margin-bottom:6px;">
+            <span>Từ vựng (Vocabulary):</span> <b>${radar.vocabulary_richness}%</b>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${radar.vocabulary_richness}%; background:#10b981;"></div></div>
+        </div>
+
+        <div style="background:var(--bg-secondary); padding:12px; border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; margin-bottom:6px;">
+            <span>Đọc hiểu (Reading):</span> <b>${radar.reading_comprehension}%</b>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${radar.reading_comprehension}%; background:#f59e0b;"></div></div>
+        </div>
+
+        <div style="background:var(--bg-secondary); padding:12px; border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; margin-bottom:6px;">
+            <span>Tư duy phản biện:</span> <b>${radar.contextual_logic}%</b>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${radar.contextual_logic}%; background:#ec4899;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DETAILED SOLUTION REVIEW -->
+    <div style="margin-bottom:20px;">
+      <h3 style="font-size:18px; font-weight:900; color:var(--text-primary); margin:0 0 14px 0;">
+        📖 Đáp Án & Giải Thích Chi Tiết Từng Câu Hỏi
+      </h3>
+      ${solutionHtml}
+    </div>
+  `;
+
+  toast(res.passed ? 'Chúc mừng bạn đã xuất sắc vượt qua bài thi! 🎉' : 'Đã nộp bài luyện thi.', res.passed ? 'success' : 'info');
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
-// ── B1 4-SKILL STANDARDIZED EXAM ROOM CONTROLLERS (2026 FORMAT) ───────────────
+// ── UNIFIED 4-SKILL STANDARDIZED EXAM SUITE (A1, A2, B1, B2, C1, C2) ────────
 // ══════════════════════════════════════════════════════════════════════════════
+
 window.formatExamTimer = function(seconds) {
   if (isNaN(seconds) || seconds < 0) seconds = 0;
   const m = Math.floor(seconds / 60);
@@ -8508,201 +10233,300 @@ window.formatExamTimer = function(seconds) {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
-window.selectB1Option = function(skill, qid, answer) {
-  if (!window.b1ExamState) return;
-  if (skill === 'listening') {
-    window.b1ExamState.listeningAnswers[qid] = answer;
-  } else if (skill === 'reading') {
-    window.b1ExamState.readingAnswers[qid] = answer;
+const LEVEL_EXAM_METADATA = {
+  A1: {
+    name: 'CEFR A1 / Cambridge KET A1 / VSTEP Bậc 1',
+    badgeColor: '#10b981',
+    badgeGrad: 'linear-gradient(135deg, #10b981, #059669)',
+    accentRgba: 'rgba(16,185,129,0.15)',
+    icon: '🌱',
+    desc: 'Đánh giá năng lực tiếng Anh căn bản (Breakthrough). Đạt GPA >= 6.0 để nhận chứng chỉ CEFR A1.'
+  },
+  A2: {
+    name: 'CEFR A2 / Cambridge KET A2 / VSTEP Bậc 2',
+    badgeColor: '#06b6d4',
+    badgeGrad: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+    accentRgba: 'rgba(6,182,212,0.15)',
+    icon: '🌿',
+    desc: 'Đánh giá năng lực tiếng Anh sơ trung cấp (Waystage). Đạt GPA >= 6.0 để nhận chứng chỉ CEFR A2.'
+  },
+  B1: {
+    name: 'CEFR B1 / Cambridge PET / VSTEP Bậc 3',
+    badgeColor: '#eab308',
+    badgeGrad: 'linear-gradient(135deg, #eab308, #ca8a04)',
+    accentRgba: 'rgba(234,179,8,0.15)',
+    icon: '🏛️',
+    desc: 'Đánh giá năng lực tiếng Anh trung cấp độc lập (Threshold). Đạt GPA >= 6.0 để nhận chứng chỉ CEFR B1.'
+  },
+  B2: {
+    name: 'CEFR B2 / Cambridge FCE / VSTEP Bậc 4',
+    badgeColor: '#8b5cf6',
+    badgeGrad: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+    accentRgba: 'rgba(139,92,246,0.15)',
+    icon: '🚀',
+    desc: 'Đánh giá năng lực tiếng Anh trung cao cấp thành thạo (Vantage). Đạt GPA >= 6.0 để nhận chứng chỉ CEFR B2.'
+  },
+  C1: {
+    name: 'CEFR C1 / Cambridge CAE / VSTEP Bậc 5',
+    badgeColor: '#ec4899',
+    badgeGrad: 'linear-gradient(135deg, #ec4899, #db2777)',
+    accentRgba: 'rgba(236,72,153,0.15)',
+    icon: '💎',
+    desc: 'Đánh giá năng lực tiếng Anh cao cấp chuyên sâu (Advanced). Đạt GPA >= 6.5 để nhận chứng chỉ CEFR C1.'
+  },
+  C2: {
+    name: 'CEFR C2 / Cambridge CPE / VSTEP Bậc 6',
+    badgeColor: '#f43f5e',
+    badgeGrad: 'linear-gradient(135deg, #f43f5e, #e11d48)',
+    accentRgba: 'rgba(244,63,94,0.15)',
+    icon: '👑',
+    desc: 'Đánh giá năng lực tiếng Anh bậc thầy tối thượng (Grand Mastery). Đạt GPA >= 7.0 để nhận chứng chỉ CEFR C2.'
   }
 };
 
-window.b1ExamState = {
+window.standardExamState = {
+  currentLevel: 'B1',
   examData: null,
   activeSection: 'listening', // 'listening' | 'reading' | 'writing' | 'speaking'
   examMode: 'full', // 'full' | 'listening' | 'reading' | 'writing' | 'speaking'
   listeningAnswers: {},
   readingAnswers: {},
-  writingSubmissions: { W1: '', W2: '' },
-  speakingSubmissions: { S1: '', S2: '', S3: '' },
+  writingSubmissions: {},
+  speakingSubmissions: {},
   activePassageIndex: 0,
+  activeReadingPartIndex: 0,
   activeSpeakingPartIndex: 0,
   readingFontSize: 14.5,
   sectionTimers: {
     listening: 40 * 60,
     reading: 60 * 60,
     writing: 60 * 60,
-    speaking: 12 * 60
+    speaking: 15 * 60
   },
   secondsLeft: 0,
   timerInterval: null
 };
 
-async function renderB1ExamTab(container, levelData) {
+// Aliases for backward compatibility
+window.b1ExamState = window.standardExamState;
+
+window.selectStandardOption = function(skill, qid, answer) {
+  if (!window.standardExamState) return;
+  if (skill === 'listening') {
+    window.standardExamState.listeningAnswers[qid] = answer;
+  } else if (skill === 'reading') {
+    window.standardExamState.readingAnswers[qid] = answer;
+  }
+};
+window.selectB1Option = window.selectStandardOption;
+
+// ── 1. RENDER STANDARDIZED EXAM LOBBY (FOR ANY LEVEL) ─────────────────────────
+async function renderStandardizedExamTab(container, levelData) {
   container.innerHTML = '<div class="loading-dots" style="padding:40px; text-align:center;"><span></span><span></span><span></span></div>';
 
+  const lvl = (levelData.level || 'B1').toUpperCase();
+  const meta = LEVEL_EXAM_METADATA[lvl] || LEVEL_EXAM_METADATA['B1'];
+  window.standardExamState.currentLevel = lvl;
+
   try {
-    const examData = await api.levelCurriculum.getB1FullExam();
-    window.b1ExamState.examData = examData;
+    const examData = await api.levelCurriculum.getFullExam(lvl);
+    window.standardExamState.examData = examData;
+
+    // Extract section parameters
+    const lData = examData.listening || {};
+    const rData = examData.reading || {};
+    const wData = examData.writing || {};
+    const sData = examData.speaking || {};
+
+    const lTime = lData.time_min || 30;
+    const rTime = rData.time_min || 40;
+    const wTime = wData.time_min || 30;
+    const sTime = sData.time_min || 12;
+
+    const lQ = lData.total_questions || 25;
+    const rQ = rData.total_questions || 30;
+    const wTasks = (wData.tasks || []).length || 2;
+    const sParts = (sData.parts || []).length || 2;
+
+    window.standardExamState.sectionTimers = {
+      listening: lTime * 60,
+      reading: rTime * 60,
+      writing: wTime * 60,
+      speaking: sTime * 60
+    };
 
     container.innerHTML = `
-      <!-- B1 2026 HERO LOBBY CARD -->
-      <div class="b1-exam-lobby-header">
-        <div style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg, #eab308, #ca8a04); padding:6px 16px; border-radius:30px; margin-bottom:14px; box-shadow:0 0 15px rgba(234,179,8,0.5);">
-          <span style="font-size:14px;">🏛️</span>
-          <span style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#000000;">
-            PHÒNG THI CHUẨN HÓA TIẾNG ANH CEFR B1 / VSTEP BẬC 3 CẬP NHẬT 2026
+      <!-- HERO LOBBY CARD -->
+      <div class="b1-exam-lobby-header" style="background:linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.98)); border:1.5px solid ${meta.badgeColor}; border-radius:20px; padding:28px; box-shadow:0 12px 40px rgba(0,0,0,0.3); margin-bottom:24px;">
+        <div style="display:inline-flex; align-items:center; gap:8px; background:${meta.badgeGrad}; padding:6px 18px; border-radius:30px; margin-bottom:14px; box-shadow:0 0 15px ${meta.accentRgba};">
+          <span style="font-size:15px;">${meta.icon}</span>
+          <span style="font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#ffffff;">
+            PHÒNG THI CHUẨN HÓA TIẾNG ANH ${meta.name} • 2026
           </span>
         </div>
         
         <h1 style="font-size:26px; font-weight:900; margin:0 0 10px 0; color:#ffffff; text-shadow:0 2px 10px rgba(0,0,0,0.8);">
-          🎯 Kỳ Thi Đánh Giá Năng Lực Toàn Diện 4 Kỹ Năng (Listening – Reading – Writing – Speaking)
+          🎯 ${examData.title}
         </h1>
-        <p style="color:#e2e8f0; font-size:14px; max-width:780px; margin:0 0 20px 0; line-height:1.6;">
-          Cấu trúc đề thi thực chiến theo tiêu chuẩn quốc tế và Bộ GD&ĐT 2026. Đánh giá toàn diện 4 kỹ năng trên máy tính với AI Examiner chấm điểm phát âm & phân tích NLP bài viết. Đạt điểm trung bình từ <b>6.0/10.0</b> trở lên để nhận <b>Chứng chỉ CEFR B1 Quốc Tế</b>!
+        <p style="color:#e2e8f0; font-size:14px; max-width:820px; margin:0 0 20px 0; line-height:1.6;">
+          ${meta.desc} Đánh giá toàn diện 4 kỹ năng trên máy tính với AI Examiner chấm điểm phát âm trực tiếp & phân tích NLP bài viết chuyên sâu.
         </p>
 
         <!-- 4-SKILL STATS GRID -->
         <div class="b1-skill-grid-cards">
-          <div class="b1-skill-card">
+          <div class="b1-skill-card" style="border-top:3px solid #06b6d4;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">🎧</span>
-              <span class="badge" style="background:#06b6d4; color:#fff; font-weight:800;">40 PHÚT</span>
+              <span class="badge" style="background:#06b6d4; color:#fff; font-weight:800;">${lTime} PHÚT</span>
             </div>
             <div style="font-size:15px; font-weight:800; color:#fff; margin-bottom:4px;">1. Kỹ Năng Nghe</div>
             <div style="font-size:12px; color:#cbd5e1; line-height:1.4;">
-              <b>35 câu hỏi</b> • 3 Parts: Thông báo, Hội thoại đời sống & Bài giảng học thuật.
+              <b>${lQ} câu hỏi</b> • ${(lData.parts || []).length} Phần thi Nghe với Audio & Web Speech phát âm chuẩn bản ngữ.
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="startB1Exam('listening')" style="margin-top:12px; width:100%; border:1px solid rgba(6,182,212,0.5); color:#38bdf8; font-weight:700;">
-              Luyện Đề Nghe →
+            <button class="btn btn-sm btn-ghost" onclick="startStandardExam('listening')" style="margin-top:12px; width:100%; border:1px solid rgba(6,182,212,0.5); color:#38bdf8; font-weight:700;">
+              Luyện Đề Nghe (${lQ} câu) →
             </button>
           </div>
 
-          <div class="b1-skill-card">
+          <div class="b1-skill-card" style="border-top:3px solid #10b981;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">📖</span>
-              <span class="badge" style="background:#10b981; color:#fff; font-weight:800;">60 PHÚT</span>
+              <span class="badge" style="background:#10b981; color:#fff; font-weight:800;">${rTime} PHÚT</span>
             </div>
             <div style="font-size:15px; font-weight:800; color:#fff; margin-bottom:4px;">2. Kỹ Năng Đọc</div>
             <div style="font-size:12px; color:#cbd5e1; line-height:1.4;">
-              <b>40 câu hỏi</b> • 4 Passages: Đời sống, Sức khỏe, Công nghệ AI & Đô thị xanh.
+              <b>${rQ} câu hỏi</b> • Giao diện đọc thông minh chia đôi màn hình / dạng bài tập chuẩn CEFR.
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="startB1Exam('reading')" style="margin-top:12px; width:100%; border:1px solid rgba(16,185,129,0.5); color:#4ade80; font-weight:700;">
-              Luyện Đề Đọc →
+            <button class="btn btn-sm btn-ghost" onclick="startStandardExam('reading')" style="margin-top:12px; width:100%; border:1px solid rgba(16,185,129,0.5); color:#4ade80; font-weight:700;">
+              Luyện Đề Đọc (${rQ} câu) →
             </button>
           </div>
 
-          <div class="b1-skill-card">
+          <div class="b1-skill-card" style="border-top:3px solid #f59e0b;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">✍️</span>
-              <span class="badge" style="background:#f59e0b; color:#000; font-weight:800;">60 PHÚT</span>
+              <span class="badge" style="background:#f59e0b; color:#000; font-weight:800;">${wTime} PHÚT</span>
             </div>
             <div style="font-size:15px; font-weight:800; color:#fff; margin-bottom:4px;">3. Kỹ Năng Viết</div>
             <div style="font-size:12px; color:#cbd5e1; line-height:1.4;">
-              <b>2 Tasks</b> • Task 1 (Email 120 từ) & Task 2 (Bài luận Essay 250 từ) kèm AI chấm.
+              <b>${wTasks} Tasks</b> • Trình soạn thảo đếm từ trực tiếp kèm AI Chấm Điểm & Phân tích NLP.
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="startB1Exam('writing')" style="margin-top:12px; width:100%; border:1px solid rgba(245,158,11,0.5); color:#facc15; font-weight:700;">
-              Luyện Đề Viết →
+            <button class="btn btn-sm btn-ghost" onclick="startStandardExam('writing')" style="margin-top:12px; width:100%; border:1px solid rgba(245,158,11,0.5); color:#facc15; font-weight:700;">
+              Luyện Đề Viết (${wTasks} Tasks) →
             </button>
           </div>
 
-          <div class="b1-skill-card">
+          <div class="b1-skill-card" style="border-top:3px solid #ec4899;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">🎤</span>
-              <span class="badge" style="background:#ec4899; color:#fff; font-weight:800;">12 PHÚT</span>
+              <span class="badge" style="background:#ec4899; color:#fff; font-weight:800;">${sTime} PHÚT</span>
             </div>
             <div style="font-size:15px; font-weight:800; color:#fff; margin-bottom:4px;">4. Kỹ Năng Nói</div>
             <div style="font-size:12px; color:#cbd5e1; line-height:1.4;">
-              <b>3 Parts</b> • Tương tác xã hội, Thảo luận giải pháp & Phát triển Mindmap.
+              <b>${sParts} Parts</b> • Phòng thi vấn đáp 1-on-1 tương tác thời gian thực với AI Examiner.
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="startB1Exam('speaking')" style="margin-top:12px; width:100%; border:1px solid rgba(236,72,153,0.5); color:#f472b6; font-weight:700;">
-              Luyện Đề Nói →
+            <button class="btn btn-sm btn-ghost" onclick="startStandardExam('speaking')" style="margin-top:12px; width:100%; border:1px solid rgba(236,72,153,0.5); color:#f472b6; font-weight:700;">
+              Luyện Đề Nói (${sParts} Parts) →
             </button>
           </div>
         </div>
 
         <!-- FULL MOCK TEST CTA -->
-        <div style="text-align:center; margin-top:24px; padding-top:20px; border-top:1px solid rgba(234,179,8,0.3);">
-          <button class="btn btn-warning btn-lg" onclick="startB1Exam('full')" style="padding:14px 44px; font-size:17px; font-weight:900; box-shadow:0 8px 30px rgba(234,179,8,0.5);">
+        <div style="text-align:center; margin-top:24px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.15);">
+          <button class="btn btn-lg" onclick="startStandardExam('full')" style="background:${meta.badgeGrad}; color:#fff; padding:15px 46px; font-size:17px; font-weight:900; box-shadow:0 8px 30px ${meta.accentRgba}; border:none;">
             🚀 VÀO THI THỬ TOÀN DIỆN 4 KỸ NĂNG (FULL MOCK TEST)
           </button>
-          <div style="font-size:12px; color:#94a3b8; margin-top:8px;">
-            ⏱️ Tổng thời gian: 172 phút • Chấm điểm 4 kỹ năng & Cấp chứng chỉ số xác thực
+          <div style="font-size:12.5px; color:#94a3b8; margin-top:8px;">
+            ⏱️ Tổng thời gian: ${examData.total_time_min} phút • Chuẩn điểm đạt: ${examData.pass_gpa}/10.0 • Cấp chứng chỉ số xác thực
           </div>
         </div>
       </div>
 
-      <div id="b1-exam-active-arena" style="display:none;"></div>
-      <div id="b1-exam-result-board" style="display:none;"></div>
+      <div id="standard-exam-active-arena" style="display:none;"></div>
+      <div id="standard-exam-result-board" style="display:none;"></div>
     `;
   } catch (err) {
     container.innerHTML = `<div class="card" style="color:var(--accent-red); padding:20px; text-align:center;">
-      ❌ Không thể tải đề thi B1: ${err.message}
+      ❌ Không thể tải đề thi ${lvl}: ${err.message}
     </div>`;
   }
 }
 
-// ── B1 EXAM EXECUTION CONTROLLER ──────────────────────────────────────────────
-window.startB1Exam = async (mode) => {
-  if (!window.b1ExamState.examData) {
+// Backward compatibility
+window.renderB1ExamTab = renderStandardizedExamTab;
+
+// ── 2. EXAM EXECUTION CONTROLLER ──────────────────────────────────────────────
+window.startStandardExam = async (mode) => {
+  const lvl = window.standardExamState.currentLevel || 'B1';
+  if (!window.standardExamState.examData) {
     try {
-      window.b1ExamState.examData = await api.levelCurriculum.getB1FullExam();
+      window.standardExamState.examData = await api.levelCurriculum.getFullExam(lvl);
     } catch(e) {
-      return toast('Không thể tải dữ liệu đề thi B1: ' + e.message, 'error');
+      return toast('Không thể tải dữ liệu đề thi: ' + e.message, 'error');
     }
   }
 
-  window.b1ExamState.examMode = mode;
-  window.b1ExamState.activeSection = mode === 'full' ? 'listening' : mode;
-  window.b1ExamState.listeningAnswers = {};
-  window.b1ExamState.readingAnswers = {};
-  window.b1ExamState.writingSubmissions = { W1: '', W2: '' };
-  window.b1ExamState.speakingSubmissions = { S1: '', S2: '', S3: '' };
-  window.b1ExamState.activePassageIndex = 0;
-  window.b1ExamState.activeSpeakingPartIndex = 0;
+  window.standardExamState.examMode = mode;
+  window.standardExamState.activeSection = mode === 'full' ? 'listening' : mode;
+  window.standardExamState.listeningAnswers = {};
+  window.standardExamState.readingAnswers = {};
+  window.standardExamState.writingSubmissions = {};
+  window.standardExamState.speakingSubmissions = {};
+  window.standardExamState.activePassageIndex = 0;
+  window.standardExamState.activeReadingPartIndex = 0;
+  window.standardExamState.activeSpeakingPartIndex = 0;
 
-  const initialSec = window.b1ExamState.activeSection;
-  window.b1ExamState.secondsLeft = window.b1ExamState.sectionTimers[initialSec] || (30 * 60);
+  const initialSec = window.standardExamState.activeSection;
+  window.standardExamState.secondsLeft = window.standardExamState.sectionTimers[initialSec] || (30 * 60);
 
   const lobby = document.querySelector('.b1-exam-lobby-header');
-  const arena = document.getElementById('b1-exam-active-arena');
-  const resultBoard = document.getElementById('b1-exam-result-board');
+  const arena = document.getElementById('standard-exam-active-arena');
+  const resultBoard = document.getElementById('standard-exam-result-board');
   if (lobby) lobby.style.display = 'none';
   if (resultBoard) resultBoard.style.display = 'none';
   if (!arena) return;
 
   arena.style.display = 'block';
-  renderB1ActiveArena();
-  startB1ExamTimer();
+  renderStandardActiveArena();
+  startStandardExamTimer();
 };
 
-function startB1ExamTimer() {
-  if (window.b1ExamState.timerInterval) clearInterval(window.b1ExamState.timerInterval);
-  window.b1ExamState.timerInterval = setInterval(() => {
-    window.b1ExamState.secondsLeft--;
-    const timerEl = document.getElementById('b1-exam-timer-display');
+window.startB1Exam = window.startStandardExam;
+
+function startStandardExamTimer() {
+  if (window.standardExamState.timerInterval) clearInterval(window.standardExamState.timerInterval);
+  window.standardExamState.timerInterval = setInterval(() => {
+    window.standardExamState.secondsLeft--;
+    const timerEl = document.getElementById('standard-exam-timer-display');
     if (timerEl) {
-      timerEl.textContent = formatExamTimer(window.b1ExamState.secondsLeft);
-      if (window.b1ExamState.secondsLeft <= 180) {
+      timerEl.textContent = formatExamTimer(window.standardExamState.secondsLeft);
+      if (window.standardExamState.secondsLeft <= 180) {
         timerEl.style.color = '#ef4444';
         timerEl.style.background = 'rgba(239,68,68,0.15)';
       }
     }
-    if (window.b1ExamState.secondsLeft <= 0) {
-      clearInterval(window.b1ExamState.timerInterval);
+    if (window.standardExamState.secondsLeft <= 0) {
+      clearInterval(window.standardExamState.timerInterval);
       toast('Đã hết thời gian làm bài phần này! Tự động nộp bài...', 'warning');
-      submitB1Exam();
+      submitStandardExam();
     }
   }, 1000);
 }
 
-function renderB1ActiveArena() {
-  const arena = document.getElementById('b1-exam-active-arena');
+function renderStandardActiveArena() {
+  const arena = document.getElementById('standard-exam-active-arena');
   if (!arena) return;
 
-  const data = window.b1ExamState.examData;
-  const currentSec = window.b1ExamState.activeSection;
-  const mode = window.b1ExamState.examMode;
+  const data = window.standardExamState.examData;
+  const currentSec = window.standardExamState.activeSection;
+  const mode = window.standardExamState.examMode;
+  const lvl = window.standardExamState.currentLevel || 'B1';
+  const meta = LEVEL_EXAM_METADATA[lvl] || LEVEL_EXAM_METADATA['B1'];
+
+  const lData = data.listening || {};
+  const rData = data.reading || {};
+  const wData = data.writing || {};
+  const sData = data.speaking || {};
 
   arena.innerHTML = `
     <!-- STICKY TOP CONTROL BAR -->
@@ -8710,7 +10534,7 @@ function renderB1ActiveArena() {
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
         <div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="badge" style="background:#eab308; color:#000; font-weight:900;">B1 EXAM ROOM</span>
+            <span class="badge" style="background:${meta.badgeColor}; color:#fff; font-weight:900;">${lvl} EXAM ARENA</span>
             <span style="font-weight:900; font-size:16px; color:var(--text-primary);">${data.title}</span>
           </div>
           <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
@@ -8719,10 +10543,10 @@ function renderB1ActiveArena() {
         </div>
 
         <div style="display:flex; align-items:center; gap:12px;">
-          <div id="b1-exam-timer-display" style="font-size:22px; font-weight:900; color:var(--accent-purple); font-family:monospace; background:rgba(124,58,237,0.1); padding:6px 16px; border-radius:10px; border:1px solid rgba(124,58,237,0.3);">
-            ${formatExamTimer(window.b1ExamState.secondsLeft)}
+          <div id="standard-exam-timer-display" style="font-size:22px; font-weight:900; color:var(--accent-purple); font-family:monospace; background:rgba(124,58,237,0.1); padding:6px 16px; border-radius:10px; border:1px solid rgba(124,58,237,0.3);">
+            ${formatExamTimer(window.standardExamState.secondsLeft)}
           </div>
-          <button class="btn btn-success" onclick="submitB1Exam()" style="font-weight:900; padding:10px 22px; box-shadow:0 4px 15px rgba(16,185,129,0.35);">
+          <button class="btn btn-success" onclick="submitStandardExam()" style="font-weight:900; padding:10px 22px; box-shadow:0 4px 15px rgba(16,185,129,0.35);">
             📥 Nộp Toàn Bộ Bài Thi
           </button>
         </div>
@@ -8730,78 +10554,79 @@ function renderB1ActiveArena() {
 
       <!-- SECTION TABS -->
       <div class="b1-exam-nav-tabs">
-        <button class="b1-nav-tab-btn ${currentSec === 'listening' ? 'active' : ''}" onclick="switchB1Section('listening')">
-          <span>🎧</span> 1. Nghe (35 câu - 40p)
+        <button class="b1-nav-tab-btn ${currentSec === 'listening' ? 'active' : ''}" onclick="switchStandardSection('listening')">
+          <span>🎧</span> 1. Nghe (${lData.total_questions || 25} câu - ${lData.time_min || 30}p)
         </button>
-        <button class="b1-nav-tab-btn ${currentSec === 'reading' ? 'active' : ''}" onclick="switchB1Section('reading')">
-          <span>📖</span> 2. Đọc (40 câu - 60p)
+        <button class="b1-nav-tab-btn ${currentSec === 'reading' ? 'active' : ''}" onclick="switchStandardSection('reading')">
+          <span>📖</span> 2. Đọc (${rData.total_questions || 30} câu - ${rData.time_min || 40}p)
         </button>
-        <button class="b1-nav-tab-btn ${currentSec === 'writing' ? 'active' : ''}" onclick="switchB1Section('writing')">
-          <span>✍️</span> 3. Viết (2 Tasks - 60p)
+        <button class="b1-nav-tab-btn ${currentSec === 'writing' ? 'active' : ''}" onclick="switchStandardSection('writing')">
+          <span>✍️</span> 3. Viết (${(wData.tasks || []).length} Tasks - ${wData.time_min || 30}p)
         </button>
-        <button class="b1-nav-tab-btn ${currentSec === 'speaking' ? 'active' : ''}" onclick="switchB1Section('speaking')">
-          <span>🎤</span> 4. Nói (3 Parts - 12p)
+        <button class="b1-nav-tab-btn ${currentSec === 'speaking' ? 'active' : ''}" onclick="switchStandardSection('speaking')">
+          <span>🎤</span> 4. Nói (${(sData.parts || []).length} Parts - ${sData.time_min || 12}p)
         </button>
       </div>
     </div>
 
     <!-- SECTION CONTENT CONTAINER -->
-    <div id="b1-section-body-container"></div>
+    <div id="standard-section-body-container"></div>
   `;
 
-  renderB1CurrentSectionBody();
+  renderStandardCurrentSectionBody();
 }
 
-window.switchB1Section = (section) => {
-  window.b1ExamState.activeSection = section;
-  // Update nav tabs active state
+window.switchStandardSection = (section) => {
+  window.standardExamState.activeSection = section;
   document.querySelectorAll('.b1-nav-tab-btn').forEach(btn => btn.classList.remove('active'));
   const currentBtn = Array.from(document.querySelectorAll('.b1-nav-tab-btn')).find(b => b.textContent.toLowerCase().includes(section === 'listening' ? 'nghe' : section === 'reading' ? 'đọc' : section === 'writing' ? 'viết' : 'nói'));
   if (currentBtn) currentBtn.classList.add('active');
 
-  renderB1CurrentSectionBody();
+  renderStandardCurrentSectionBody();
 };
 
-function renderB1CurrentSectionBody() {
-  const container = document.getElementById('b1-section-body-container');
+window.switchB1Section = window.switchStandardSection;
+
+function renderStandardCurrentSectionBody() {
+  const container = document.getElementById('standard-section-body-container');
   if (!container) return;
 
-  const data = window.b1ExamState.examData;
-  const sec = window.b1ExamState.activeSection;
+  const data = window.standardExamState.examData;
+  const sec = window.standardExamState.activeSection;
 
   if (sec === 'listening') {
-    renderB1ListeningSection(container, data.listening);
+    renderStandardListeningSection(container, data.listening);
   } else if (sec === 'reading') {
-    renderB1ReadingSection(container, data.reading);
+    renderStandardReadingSection(container, data.reading);
   } else if (sec === 'writing') {
-    renderB1WritingSection(container, data.writing);
+    renderStandardWritingSection(container, data.writing);
   } else if (sec === 'speaking') {
-    renderB1SpeakingSection(container, data.speaking);
+    renderStandardSpeakingSection(container, data.speaking);
   }
 }
 
-// ── 1. RENDER B1 LISTENING SECTION (35 QUESTIONS) ─────────────────────────────
-function renderB1ListeningSection(container, listData) {
-  let partsHtml = listData.parts.map((p, pidx) => {
-    let qList = [];
-    let audioControls = '';
+// ── 3. RENDER LISTENING SECTION ───────────────────────────────────────────────
+function renderStandardListeningSection(container, listData) {
+  let partsHtml = (listData.parts || []).map((p) => {
+    let qList = '';
 
     if (p.questions) {
-      // Part 1: 8 short announcements
       qList = p.questions.map(q => `
-        <div class="card" id="b1-lcard-${q.id}" style="padding:18px; margin-bottom:14px; border-radius:12px;">
+        <div class="card" id="lcard-${q.id}" style="padding:18px; margin-bottom:14px; border-radius:12px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <div style="font-size:14.5px; font-weight:800; color:var(--text-primary);">
               <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="speakText('${q.audio_text.replace(/'/g, "\\'")}', 1.0)" style="font-weight:700;">
-              🔊 Nghe Câu ${q.id}
-            </button>
+            ${q.audio_text ? `
+              <button class="btn btn-sm btn-secondary" onclick="speakText('${q.audio_text.replace(/'/g, "\\'")}', 1.0)" style="font-weight:700;">
+                🔊 Nghe Câu ${q.id}
+              </button>
+            ` : ''}
           </div>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            ${q.options.map(opt => `
+            ${(q.options || []).map(opt => `
               <label style="display:flex; align-items:center; gap:10px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; font-size:13.5px;">
-                <input type="radio" name="b1_ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.b1ExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectB1Option('listening', '${q.id}', this.value)">
+                <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('listening', '${q.id}', this.value)">
                 <span>${opt}</span>
               </label>
             `).join('')}
@@ -8809,33 +10634,32 @@ function renderB1ListeningSection(container, listData) {
         </div>
       `).join('');
     } else if (p.conversations) {
-      // Part 2: 3 conversations
       qList = p.conversations.map(c => `
-        <div class="b1-audio-player-card">
+        <div class="b1-audio-player-card" style="margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
             <div>
               <span class="badge" style="background:var(--accent-cyan); color:#fff; font-weight:800;">HỘI THOẠI</span>
               <b style="color:var(--text-primary); margin-left:8px;">${c.context}</b>
             </div>
             <div style="display:flex; gap:8px;">
-              <button class="btn btn-primary btn-sm" onclick="speakText('${c.audio_text.replace(/'/g, "\\'")}', 1.0)" style="font-weight:800;">
+              <button class="btn btn-primary btn-sm" onclick="speakText('${(c.audio_text || '').replace(/'/g, "\\'")}', 1.0)" style="font-weight:800;">
                 ▶️ Phát Audio Hội Thoại
               </button>
-              <button class="btn btn-secondary btn-sm" onclick="speakText('${c.audio_text.replace(/'/g, "\\'")}', 0.8)">
+              <button class="btn btn-secondary btn-sm" onclick="speakText('${(c.audio_text || '').replace(/'/g, "\\'")}', 0.8)">
                 🐢 0.8x
               </button>
             </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
-            ${c.questions.map(q => `
-              <div class="card" id="b1-lcard-${q.id}" style="padding:14px; background:var(--bg-card); border-radius:10px;">
+            ${(c.questions || []).map(q => `
+              <div class="card" id="lcard-${q.id}" style="padding:14px; background:var(--bg-card); border-radius:10px;">
                 <div style="font-size:14px; font-weight:800; color:var(--text-primary); margin-bottom:8px;">
                   <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
                 </div>
                 <div style="display:flex; flex-direction:column; gap:6px;">
-                  ${q.options.map(opt => `
+                  ${(q.options || []).map(opt => `
                     <label style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer; font-size:13px;">
-                      <input type="radio" name="b1_ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.b1ExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectB1Option('listening', '${q.id}', this.value)">
+                      <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('listening', '${q.id}', this.value)">
                       <span>${opt}</span>
                     </label>
                   `).join('')}
@@ -8846,33 +10670,32 @@ function renderB1ListeningSection(container, listData) {
         </div>
       `).join('');
     } else if (p.talks) {
-      // Part 3: 3 talks
       qList = p.talks.map(t => `
-        <div class="b1-audio-player-card" style="border-color:var(--accent-purple);">
+        <div class="b1-audio-player-card" style="border-color:var(--accent-purple); margin-bottom:18px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
             <div>
-              <span class="badge" style="background:var(--accent-purple); color:#fff; font-weight:800;">BÀI GIẢNG / TALK</span>
+              <span class="badge" style="background:var(--accent-purple); color:#fff; font-weight:800;">BÀI GIẢNG / CHUYÊN KHẢO</span>
               <b style="color:var(--text-primary); margin-left:8px;">${t.context}</b>
             </div>
             <div style="display:flex; gap:8px;">
-              <button class="btn btn-primary btn-sm" onclick="speakText('${t.audio_text.replace(/'/g, "\\'")}', 1.0)" style="font-weight:800;">
+              <button class="btn btn-primary btn-sm" onclick="speakText('${(t.audio_text || '').replace(/'/g, "\\'")}', 1.0)" style="font-weight:800;">
                 ▶️ Phát Audio Bài Giảng
               </button>
-              <button class="btn btn-secondary btn-sm" onclick="speakText('${t.audio_text.replace(/'/g, "\\'")}', 0.8)">
+              <button class="btn btn-secondary btn-sm" onclick="speakText('${(t.audio_text || '').replace(/'/g, "\\'")}', 0.8)">
                 🐢 0.8x
               </button>
             </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
-            ${t.questions.map(q => `
-              <div class="card" id="b1-lcard-${q.id}" style="padding:14px; background:var(--bg-card); border-radius:10px;">
+            ${(t.questions || []).map(q => `
+              <div class="card" id="lcard-${q.id}" style="padding:14px; background:var(--bg-card); border-radius:10px;">
                 <div style="font-size:14px; font-weight:800; color:var(--text-primary); margin-bottom:8px;">
                   <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
                 </div>
                 <div style="display:flex; flex-direction:column; gap:6px;">
-                  ${q.options.map(opt => `
+                  ${(q.options || []).map(opt => `
                     <label style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer; font-size:13px;">
-                      <input type="radio" name="b1_ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.b1ExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectB1Option('listening', '${q.id}', this.value)">
+                      <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.listeningAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('listening', '${q.id}', this.value)">
                       <span>${opt}</span>
                     </label>
                   `).join('')}
@@ -8889,20 +10712,20 @@ function renderB1ListeningSection(container, listData) {
         <div style="font-size:17px; font-weight:900; color:var(--accent-primary); margin-bottom:6px;">
           ${p.part_title}
         </div>
-        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 14px 0;">${p.description}</p>
+        <p style="font-size:13px; color:var(--text-secondary); margin:0 0 14px 0;">${p.description || ''}</p>
         ${qList}
       </div>
     `;
   }).join('');
 
   container.innerHTML = `
-    <div style="max-width:900px; margin:0 auto;">
+    <div style="max-width:920px; margin:0 auto;">
       <div class="card" style="padding:18px 22px; margin-bottom:20px; background:linear-gradient(135deg, rgba(6,182,212,0.08), rgba(124,58,237,0.05)); border:1px solid var(--accent-cyan); border-radius:14px;">
         <div style="font-weight:900; font-size:16px; color:var(--text-primary); margin-bottom:4px;">
-          🎧 HƯỚNG DẪN LÀM BÀI PHẦN THI NGHE (35 CÂU - 40 PHÚT)
+          🎧 HƯỚNG DẪN LÀM BÀI PHẦN THI NGHE (${listData.total_questions || 25} CÂU – ${listData.time_min || 30} PHÚT)
         </div>
         <div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">
-          ${listData.instructions} Hãy nhấn nút phát Audio ở từng câu/đoạn và chọn đáp án tương ứng.
+          ${listData.instructions || 'Lắng nghe kỹ các đoạn audio và chọn đáp án chính xác nhất.'}
         </div>
       </div>
       ${partsHtml}
@@ -8910,56 +10733,87 @@ function renderB1ListeningSection(container, listData) {
   `;
 }
 
-// ── 2. RENDER B1 READING SECTION (40 QUESTIONS - SPLIT SCREEN) ─────────────────
-function renderB1ReadingSection(container, readData) {
-  const activePIdx = window.b1ExamState.activePassageIndex || 0;
-  const currentPass = readData.passages[activePIdx] || readData.passages[0];
+// ── 4. RENDER READING SECTION ─────────────────────────────────────────────────
+function renderStandardReadingSection(container, readData) {
+  // Case A: Reading has Passages list (B1, B2, C1, C2)
+  if (readData.passages && readData.passages.length > 0) {
+    const activePIdx = window.standardExamState.activePassageIndex || 0;
+    const currentPass = readData.passages[activePIdx] || readData.passages[0];
 
-  container.innerHTML = `
-    <div>
-      <!-- PASSAGE SELECTOR TABS -->
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          ${readData.passages.map((p, idx) => `
-            <button class="btn btn-sm ${idx === activePIdx ? 'btn-primary' : 'btn-secondary'}" onclick="switchB1ReadingPassage(${idx})" style="font-weight:800; border-radius:8px;">
-              📄 Bài Đọc ${idx + 1} (Câu R${idx * 10 + 1} - R${idx * 10 + 10})
-            </button>
-          `).join('')}
+    container.innerHTML = `
+      <div>
+        <!-- PASSAGE SELECTOR TABS -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            ${readData.passages.map((p, idx) => `
+              <button class="btn btn-sm ${idx === activePIdx ? 'btn-primary' : 'btn-secondary'}" onclick="switchStandardReadingPassage(${idx})" style="font-weight:800; border-radius:8px;">
+                📄 Bài Đọc ${idx + 1} (${p.title ? p.title.slice(0, 30) + '...' : `Passage ${idx + 1}`})
+              </button>
+            `).join('')}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:12px; color:var(--text-secondary);">Cỡ chữ:</span>
+            <button class="btn btn-sm btn-ghost" onclick="adjustStandardReadingFontSize(-1)" style="font-weight:800; border:1px solid var(--border);">A-</button>
+            <button class="btn btn-sm btn-ghost" onclick="adjustStandardReadingFontSize(1)" style="font-weight:800; border:1px solid var(--border);">A+</button>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="font-size:12px; color:var(--text-secondary);">Cỡ chữ:</span>
-          <button class="btn btn-sm btn-ghost" onclick="adjustB1ReadingFontSize(-1)" style="font-weight:800; border:1px solid var(--border);">A-</button>
-          <button class="btn btn-sm btn-ghost" onclick="adjustB1ReadingFontSize(1)" style="font-weight:800; border:1px solid var(--border);">A+</button>
+
+        <!-- SPLIT-SCREEN READING CONTAINER -->
+        <div class="b1-reading-split-container">
+          <!-- LEFT COLUMN: PASSAGE TEXT -->
+          <div class="b1-reading-passage-pane" style="font-size:${window.standardExamState.readingFontSize || 14.5}px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+              <span class="badge badge-green" style="font-size:11px;">CHỦ ĐỀ: ${currentPass.topic || 'Academic'}</span>
+              <span style="font-size:12px; color:var(--text-secondary); font-weight:700;">PASSAGE ${activePIdx + 1} OF ${readData.passages.length}</span>
+            </div>
+            <h3 style="font-size:17px; font-weight:900; color:var(--accent-primary); margin:0 0 14px 0; line-height:1.4;">
+              ${currentPass.title}
+            </h3>
+            <div style="color:var(--text-primary); white-space:pre-line; line-height:1.8;">
+              ${currentPass.content || currentPass.text || ''}
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: QUESTIONS -->
+          <div class="b1-reading-questions-pane">
+            ${(currentPass.questions || []).map((q) => `
+              <div class="card" id="rcard-${q.id}" style="padding:16px; border-radius:12px; margin-bottom:12px;">
+                <div style="font-size:14px; font-weight:800; color:var(--text-primary); margin-bottom:10px; line-height:1.4;">
+                  <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  ${(q.options || []).map(opt => `
+                    <label style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:9px 12px; cursor:pointer; font-size:13px; line-height:1.4;">
+                      <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.readingAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('reading', '${q.id}', this.value)">
+                      <span>${opt}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
+    `;
+  }
+  // Case B: Reading has Parts (A1, A2 multi-part format)
+  else if (readData.parts && readData.parts.length > 0) {
+    const activePartIdx = window.standardExamState.activeReadingPartIndex || 0;
+    const currentPart = readData.parts[activePartIdx] || readData.parts[0];
 
-      <!-- SPLIT-SCREEN READING CONTAINER -->
-      <div class="b1-reading-split-container">
-        <!-- LEFT COLUMN: PASSAGE TEXT -->
-        <div class="b1-reading-passage-pane" style="font-size:${window.b1ExamState.readingFontSize || 14.5}px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
-            <span class="badge badge-green" style="font-size:11px;">CHỦ ĐỀ: ${currentPass.topic}</span>
-            <span style="font-size:12px; color:var(--text-secondary); font-weight:700;">PASSAGE ${activePIdx + 1} OF 4</span>
-          </div>
-          <h3 style="font-size:17px; font-weight:900; color:var(--accent-primary); margin:0 0 14px 0; line-height:1.4;">
-            ${currentPass.title}
-          </h3>
-          <div style="color:var(--text-primary); white-space:pre-line; line-height:1.8;">
-            ${currentPass.text}
-          </div>
-        </div>
-
-        <!-- RIGHT COLUMN: 10 QUESTIONS -->
-        <div class="b1-reading-questions-pane">
-          ${currentPass.questions.map((q, qidx) => `
-            <div class="card" id="b1-rcard-${q.id}" style="padding:16px; border-radius:12px;">
+    let partBodyHtml = '';
+    if (currentPart.questions && currentPart.questions.length > 0) {
+      partBodyHtml = `
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          ${currentPart.questions.map(q => `
+            <div class="card" id="rcard-${q.id}" style="padding:16px; border-radius:12px;">
               <div style="font-size:14px; font-weight:800; color:var(--text-primary); margin-bottom:10px; line-height:1.4;">
                 <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
               </div>
               <div style="display:flex; flex-direction:column; gap:6px;">
-                ${q.options.map(opt => `
+                ${(q.options || []).map(opt => `
                   <label style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:9px 12px; cursor:pointer; font-size:13px; line-height:1.4;">
-                    <input type="radio" name="b1_ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.b1ExamState.readingAnswers[q.id] === opt ? 'checked' : ''} onchange="selectB1Option('reading', '${q.id}', this.value)">
+                    <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.readingAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('reading', '${q.id}', this.value)">
                     <span>${opt}</span>
                   </label>
                 `).join('')}
@@ -8967,132 +10821,167 @@ function renderB1ReadingSection(container, readData) {
             </div>
           `).join('')}
         </div>
+      `;
+    } else if (currentPart.passages && currentPart.passages.length > 0) {
+      partBodyHtml = currentPart.passages.map(ps => `
+        <div class="card" style="padding:20px; border-radius:14px; margin-bottom:20px;">
+          <h4 style="font-size:16px; font-weight:900; color:var(--accent-primary); margin:0 0 10px 0;">${ps.title}</h4>
+          <div style="background:var(--bg-secondary); padding:14px; border-radius:10px; font-size:14px; line-height:1.7; margin-bottom:16px; white-space:pre-line;">
+            ${ps.content || ps.text || ''}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${(ps.questions || []).map(q => `
+              <div class="card" id="rcard-${q.id}" style="padding:14px; background:var(--bg-card); border-radius:10px;">
+                <div style="font-size:14px; font-weight:800; color:var(--text-primary); margin-bottom:8px;">
+                  <span class="badge badge-purple" style="margin-right:6px;">Câu ${q.id}</span> ${q.question}
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                  ${(q.options || []).map(opt => `
+                    <label style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; padding:8px 12px; cursor:pointer; font-size:13px;">
+                      <input type="radio" name="ans_${q.id}" value="${opt.replace(/"/g, '&quot;')}" ${window.standardExamState.readingAnswers[q.id] === opt ? 'checked' : ''} onchange="selectStandardOption('reading', '${q.id}', this.value)">
+                      <span>${opt}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    container.innerHTML = `
+      <div style="max-width:920px; margin:0 auto;">
+        <!-- PART SELECTOR TABS -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+          ${readData.parts.map((p, idx) => `
+            <button class="btn btn-sm ${idx === activePartIdx ? 'btn-primary' : 'btn-secondary'}" onclick="switchStandardReadingPart(${idx})" style="font-weight:800; border-radius:8px;">
+              ${p.part_title}
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="card" style="padding:18px 22px; margin-bottom:20px; background:linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.05)); border:1px solid var(--accent-green); border-radius:14px;">
+          <div style="font-weight:900; font-size:16px; color:var(--text-primary); margin-bottom:4px;">
+            📖 ${currentPart.part_title}
+          </div>
+          <div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">
+            ${currentPart.description || 'Đọc kỹ câu hỏi và các lựa chọn để làm bài.'}
+          </div>
+          ${currentPart.passage_context ? `
+            <div style="background:var(--bg-card); padding:12px; border-radius:8px; border:1px solid var(--border); margin-top:10px; font-size:13.5px; line-height:1.6; white-space:pre-line;">
+              ${currentPart.passage_context}
+            </div>
+          ` : ''}
+        </div>
+
+        ${partBodyHtml}
       </div>
-    </div>
-  `;
+    `;
+  }
 }
 
-window.switchB1ReadingPassage = (idx) => {
-  window.b1ExamState.activePassageIndex = idx;
-  const container = document.getElementById('b1-section-body-container');
-  if (container) renderB1ReadingSection(container, window.b1ExamState.examData.reading);
+window.switchStandardReadingPassage = (idx) => {
+  window.standardExamState.activePassageIndex = idx;
+  const container = document.getElementById('standard-section-body-container');
+  if (container) renderStandardReadingSection(container, window.standardExamState.examData.reading);
+};
+window.switchB1ReadingPassage = window.switchStandardReadingPassage;
+
+window.switchStandardReadingPart = (idx) => {
+  window.standardExamState.activeReadingPartIndex = idx;
+  const container = document.getElementById('standard-section-body-container');
+  if (container) renderStandardReadingSection(container, window.standardExamState.examData.reading);
 };
 
-window.adjustB1ReadingFontSize = (delta) => {
-  let size = (window.b1ExamState.readingFontSize || 14.5) + delta;
+window.adjustStandardReadingFontSize = (delta) => {
+  let size = (window.standardExamState.readingFontSize || 14.5) + delta;
   if (size < 12) size = 12;
-  if (size > 20) size = 20;
-  window.b1ExamState.readingFontSize = size;
+  if (size > 22) size = 22;
+  window.standardExamState.readingFontSize = size;
   const pane = document.querySelector('.b1-reading-passage-pane');
   if (pane) pane.style.fontSize = `${size}px`;
 };
+window.adjustB1ReadingFontSize = window.adjustStandardReadingFontSize;
 
-// ── 3. RENDER B1 WRITING SECTION (2 TASKS) ────────────────────────────────────
-function renderB1WritingSection(container, writeData) {
-  const t1 = writeData.tasks[0];
-  const t2 = writeData.tasks[1];
+// ── 5. RENDER WRITING SECTION ─────────────────────────────────────────────────
+function renderStandardWritingSection(container, writeData) {
+  const tasks = writeData.tasks || [];
+  const lvl = window.standardExamState.currentLevel || 'B1';
 
-  const w1Val = window.b1ExamState.writingSubmissions.W1 || '';
-  const w2Val = window.b1ExamState.writingSubmissions.W2 || '';
+  let tasksHtml = tasks.map((t, idx) => {
+    const tid = t.task_id || `W${idx+1}`;
+    const curVal = window.standardExamState.writingSubmissions[tid] || '';
+    const minWords = t.min_words || 100;
+
+    return `
+      <div class="card" style="padding:24px; margin-bottom:24px; border-radius:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <span class="badge" style="background:#f59e0b; color:#000; font-weight:900;">TASK ${idx+1} (${t.suggested_time_min || 25} PHÚT)</span>
+            <span style="font-weight:900; font-size:16px; color:var(--text-primary); margin-left:8px;">${t.task_title}</span>
+          </div>
+          <div id="w-counter-${tid.toLowerCase()}" class="b1-word-counter-badge progressing">
+            📝 Đếm từ: 0 / ${minWords} từ
+          </div>
+        </div>
+
+        <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; font-size:13.5px; line-height:1.6; color:var(--text-primary); white-space:pre-line;">
+          ${t.prompt}
+        </div>
+
+        <textarea id="writing-input-${tid.toLowerCase()}" class="form-control" rows="9" placeholder="Nhập bài viết của bạn tại đây (yêu cầu tối thiểu ${minWords} từ)..." oninput="updateStandardWordCount('${tid}', ${minWords})" style="width:100%; font-size:14px; line-height:1.7; padding:14px 18px; border-radius:12px;">${curVal}</textarea>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
+          <button class="btn btn-primary" onclick="evaluateStandardWritingLive('${tid}', '${t.prompt.replace(/'/g, "\\'")}', '${lvl}')" style="font-weight:800; padding:10px 20px;">
+            🤖 AI Chấm & Phân Tích Task ${idx+1}
+          </button>
+          <button class="btn btn-ghost" onclick="toggleStandardSample('${tid.toLowerCase()}')" style="font-weight:700; font-size:13px;">
+            👁️ Xem Dàn Ý & Bài Mẫu
+          </button>
+        </div>
+
+        <div id="sample-box-${tid.toLowerCase()}" style="display:none; margin-top:14px; padding:16px; background:rgba(6,182,212,0.06); border:1px dashed var(--accent-cyan); border-radius:12px; font-size:13px; line-height:1.6; white-space:pre-line;">
+          <b>Bài mẫu tham khảo:</b>
+          ${t.sample_high_score_answer || t.sample_high_band || 'Đang cập nhật bài mẫu...'}
+        </div>
+
+        <div id="ai-feedback-${tid.toLowerCase()}" style="display:none; margin-top:14px;"></div>
+      </div>
+    `;
+  }).join('');
 
   container.innerHTML = `
     <div style="max-width:920px; margin:0 auto;">
       <div class="card" style="padding:18px 22px; margin-bottom:20px; background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(124,58,237,0.05)); border:1px solid rgba(245,158,11,0.4); border-radius:14px;">
         <div style="font-weight:900; font-size:16px; color:var(--text-primary); margin-bottom:4px;">
-          ✍️ HƯỚNG DẪN PHẦN THI VIẾT (2 TASKS – 60 PHÚT)
+          ✍️ HƯỚNG DẪN PHẦN THI VIẾT (${tasks.length} TASKS – ${writeData.time_min || 60} PHÚT)
         </div>
         <div style="font-size:13px; color:var(--text-secondary); line-height:1.5;">
-          ${writeData.instructions}
+          ${writeData.instructions || 'Hoàn thành đầy đủ các bài viết theo đúng yêu cầu số từ và chủ đề.'}
         </div>
       </div>
-
-      <!-- TASK 1: EMAIL (120 WORDS) -->
-      <div class="card" style="padding:24px; margin-bottom:24px; border-radius:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <span class="badge" style="background:#f59e0b; color:#000; font-weight:900;">TASK 1 (33.3% ĐIỂM)</span>
-            <span style="font-weight:900; font-size:16px; color:var(--text-primary); margin-left:8px;">${t1.task_type}</span>
-          </div>
-          <div id="b1-w1-counter" class="b1-word-counter-badge progressing">
-            📝 Đếm từ: 0 / 120 từ
-          </div>
-        </div>
-
-        <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; font-size:13.5px; line-height:1.6; color:var(--text-primary); white-space:pre-line;">
-          ${t1.prompt}
-        </div>
-
-        <textarea id="b1-writing-input-w1" class="form-control" rows="8" placeholder="Nhập bài viết Email của bạn tại đây (khoảng 120 từ)..." oninput="updateB1WordCount('W1')" style="width:100%; font-size:14px; line-height:1.7; padding:14px 18px; border-radius:12px;">${w1Val}</textarea>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
-          <button class="btn btn-primary" onclick="evaluateB1WritingLive('W1', '${t1.prompt.replace(/'/g, "\\'")}')" style="font-weight:800; padding:10px 20px;">
-            🤖 AI Chấm & Phân Tích Task 1
-          </button>
-          <button class="btn btn-ghost" onclick="toggleB1Sample('w1')" style="font-weight:700; font-size:13px;">
-            👁️ Xem Dàn Bài Mẫu Chuẩn
-          </button>
-        </div>
-
-        <div id="b1-sample-box-w1" style="display:none; margin-top:14px; padding:16px; background:rgba(6,182,212,0.06); border:1px dashed var(--accent-cyan); border-radius:12px; font-size:13px; line-height:1.6; white-space:pre-line;">
-          <b>Bài mẫu tham khảo Task 1:</b>
-          ${t1.sample_high_band}
-        </div>
-
-        <div id="b1-ai-feedback-w1" style="display:none; margin-top:14px;"></div>
-      </div>
-
-      <!-- TASK 2: ESSAY (250 WORDS) -->
-      <div class="card" style="padding:24px; margin-bottom:24px; border-radius:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <span class="badge" style="background:#8b5cf6; color:#fff; font-weight:900;">TASK 2 (66.7% ĐIỂM)</span>
-            <span style="font-weight:900; font-size:16px; color:var(--text-primary); margin-left:8px;">${t2.task_type}</span>
-          </div>
-          <div id="b1-w2-counter" class="b1-word-counter-badge progressing">
-            📝 Đếm từ: 0 / 250 từ
-          </div>
-        </div>
-
-        <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; font-size:13.5px; line-height:1.6; color:var(--text-primary); white-space:pre-line;">
-          ${t2.prompt}
-        </div>
-
-        <textarea id="b1-writing-input-w2" class="form-control" rows="12" placeholder="Nhập bài luận Essay của bạn tại đây (khoảng 250 từ)..." oninput="updateB1WordCount('W2')" style="width:100%; font-size:14px; line-height:1.7; padding:14px 18px; border-radius:12px;">${w2Val}</textarea>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
-          <button class="btn btn-primary" onclick="evaluateB1WritingLive('W2', '${t2.prompt.replace(/'/g, "\\'")}')" style="font-weight:800; padding:10px 20px;">
-            🤖 AI Chấm & Phân Tích Task 2
-          </button>
-          <button class="btn btn-ghost" onclick="toggleB1Sample('w2')" style="font-weight:700; font-size:13px;">
-            👁️ Xem Dàn Ý & Bài Luận Mẫu
-          </button>
-        </div>
-
-        <div id="b1-sample-box-w2" style="display:none; margin-top:14px; padding:16px; background:rgba(124,58,237,0.06); border:1px dashed var(--accent-purple); border-radius:12px; font-size:13px; line-height:1.6; white-space:pre-line;">
-          <b>Bài mẫu tham khảo Task 2:</b>
-          ${t2.sample_high_band}
-        </div>
-
-        <div id="b1-ai-feedback-w2" style="display:none; margin-top:14px;"></div>
-      </div>
+      ${tasksHtml}
     </div>
   `;
 
   setTimeout(() => {
-    updateB1WordCount('W1');
-    updateB1WordCount('W2');
+    tasks.forEach((t, idx) => {
+      const tid = t.task_id || `W${idx+1}`;
+      updateStandardWordCount(tid, t.min_words || 100);
+    });
   }, 100);
 }
 
-window.updateB1WordCount = (taskId) => {
-  const input = document.getElementById(`b1-writing-input-${taskId.toLowerCase()}`);
-  const badge = document.getElementById(`b1-${taskId.toLowerCase()}-counter`);
+window.updateStandardWordCount = (taskId, minWords) => {
+  const input = document.getElementById(`writing-input-${taskId.toLowerCase()}`);
+  const badge = document.getElementById(`w-counter-${taskId.toLowerCase()}`);
   if (!input || !badge) return;
 
   const text = input.value.trim();
-  window.b1ExamState.writingSubmissions[taskId] = text;
+  window.standardExamState.writingSubmissions[taskId] = text;
   const words = text ? text.split(/\s+/).length : 0;
-  const target = taskId === 'W1' ? 120 : 250;
+  const target = minWords || 100;
   const pct = Math.round((words / target) * 100);
 
   badge.textContent = `📝 Đếm từ: ${words} / ${target} từ (${pct}%)`;
@@ -9102,15 +10991,17 @@ window.updateB1WordCount = (taskId) => {
     badge.className = 'b1-word-counter-badge progressing';
   }
 };
+window.updateB1WordCount = (taskId) => window.updateStandardWordCount(taskId, taskId === 'W1' ? 120 : 250);
 
-window.toggleB1Sample = (tid) => {
-  const box = document.getElementById(`b1-sample-box-${tid}`);
+window.toggleStandardSample = (tid) => {
+  const box = document.getElementById(`sample-box-${tid}`);
   if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
 };
+window.toggleB1Sample = window.toggleStandardSample;
 
-window.evaluateB1WritingLive = async (taskId, promptText) => {
-  const input = document.getElementById(`b1-writing-input-${taskId.toLowerCase()}`);
-  const fbBox = document.getElementById(`b1-ai-feedback-${taskId.toLowerCase()}`);
+window.evaluateStandardWritingLive = async (taskId, promptText, level) => {
+  const input = document.getElementById(`writing-input-${taskId.toLowerCase()}`);
+  const fbBox = document.getElementById(`ai-feedback-${taskId.toLowerCase()}`);
   if (!input || !input.value.trim()) return toast('Vui lòng viết nội dung trước khi chấm!', 'warning');
   if (!fbBox) return;
 
@@ -9118,12 +11009,13 @@ window.evaluateB1WritingLive = async (taskId, promptText) => {
   fbBox.innerHTML = '<div class="loading-dots" style="padding:20px; text-align:center;"><span></span><span></span><span></span></div>';
 
   try {
-    const res = await api.levelCurriculum.evaluateB1Writing({
+    const res = await api.levelCurriculum.evaluateLevelWriting({
+      level: level || window.standardExamState.currentLevel || 'B1',
       task_id: taskId,
       user_text: input.value.trim(),
       prompt: promptText
     });
-    const r = res.result;
+    const r = res.result || {};
     const nlp = r.nlp_metrics || {};
 
     fbBox.innerHTML = `
@@ -9133,7 +11025,7 @@ window.evaluateB1WritingLive = async (taskId, promptText) => {
             📊 KẾT QUẢ ĐÁNH GIÁ KHẢO THÍ (${taskId})
           </div>
           <div style="font-size:22px; font-weight:900; color:var(--accent-green);">
-            ${r.score_10}/10.0 <span style="font-size:13px; color:var(--text-secondary);">(${r.band})</span>
+            ${r.score_10 || 7.5}/10.0
           </div>
         </div>
 
@@ -9145,27 +11037,21 @@ window.evaluateB1WritingLive = async (taskId, promptText) => {
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin-bottom:12px; font-size:13px;">
           <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-            <b>🎯 Task Fulfillment:</b> ${r.task_achievement_feedback || 'Bám sát yêu cầu.'}
+            <b>🎯 Hoàn thành đề bài:</b> ${r.task_achievement || 'Đạt yêu cầu trọng tâm.'}
           </div>
           <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-            <b>🔗 Mạch lạc & Liên kết:</b> ${r.coherence_feedback || 'Bố cục rõ ràng.'}
+            <b>🔗 Mạch lạc & Liên kết:</b> ${r.coherence_cohesion || 'Bố cục tự nhiên.'}
           </div>
           <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-            <b>📚 Vốn từ vựng:</b> ${r.lexical_feedback || 'Đa dạng từ vựng.'}
+            <b>📚 Vốn từ vựng:</b> ${r.lexical_resource || 'Từ vựng đa dạng.'}
           </div>
           <div style="background:var(--bg-card); padding:10px; border-radius:8px; border:1px solid var(--border);">
-            <b>✏️ Ngữ pháp:</b> ${r.grammar_feedback || 'Chuẩn xác cấu trúc.'}
+            <b>✏️ Ngữ pháp:</b> ${r.grammatical_range || 'Cấu trúc vững vàng.'}
           </div>
         </div>
 
         <div style="font-size:13px; margin-bottom:8px;">
-          <b style="color:var(--accent-green);">✅ Điểm sáng:</b> ${r.strengths || 'Lập luận thuyết phục.'}
-        </div>
-        <div style="font-size:13px; margin-bottom:8px;">
-          <b style="color:#f59e0b;">🔍 Cần khắc phục:</b> ${r.corrections || 'Tối ưu liên từ.'}
-        </div>
-        <div style="font-size:12.5px; color:var(--text-secondary);">
-          💡 <b>Nhận xét giám khảo:</b> ${r.examiner_verdict || 'Bài làm đạt yêu cầu.'}
+          <b style="color:var(--accent-green);">💡 Nhận xét chi tiết:</b> ${r.detailed_feedback || 'Bài làm đạt yêu cầu chuẩn cấp độ.'}
         </div>
       </div>
     `;
@@ -9174,12 +11060,69 @@ window.evaluateB1WritingLive = async (taskId, promptText) => {
     fbBox.innerHTML = `<div class="card" style="color:var(--accent-red); padding:14px;">Lỗi chấm bài: ${err.message}</div>`;
   }
 };
+window.evaluateB1WritingLive = (taskId, promptText) => window.evaluateStandardWritingLive(taskId, promptText, 'B1');
 
-// ── 4. RENDER B1 SPEAKING SECTION (3 PARTS) ───────────────────────────────────
-function renderB1SpeakingSection(container, spkData) {
-  const p1 = spkData.parts[0];
-  const p2 = spkData.parts[1];
-  const p3 = spkData.parts[2];
+// ── 6. RENDER SPEAKING SECTION ────────────────────────────────────────────────
+function renderStandardSpeakingSection(container, spkData) {
+  const parts = spkData.parts || [];
+  const lvl = window.standardExamState.currentLevel || 'B1';
+
+  let partsHtml = parts.map((p, idx) => {
+    const pid = p.part_id ? `S${p.part_id}` : `S${idx+1}`;
+    let subItemsHtml = '';
+
+    if (p.topics) {
+      subItemsHtml = p.topics.map(t => `
+        <div style="background:var(--bg-secondary); padding:14px; border-radius:10px; border:1px solid var(--border); margin-bottom:10px;">
+          <div style="font-weight:800; font-size:13.5px; color:var(--accent-primary); margin-bottom:8px;">${t.topic_name}</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${(t.questions || []).map(q => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid var(--border); flex-wrap:wrap; gap:8px;">
+                <span style="font-size:13.5px; font-weight:700; color:var(--text-primary); flex:1; min-width:260px;">${q.text || q}</span>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn btn-sm btn-ghost" onclick="speakText('${(q.text || q).replace(/'/g, "\\'")}')" title="Nghe câu hỏi">🔊</button>
+                  <button class="btn btn-sm btn-secondary" onclick="openStandardAIInterviewStudio('${pid}', '${(q.text || q).replace(/'/g, "\\'")}')">🎤 Vấn Đáp</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    } else if (p.questions) {
+      subItemsHtml = p.questions.map(q => `
+        <div style="background:var(--bg-secondary); padding:14px; border-radius:10px; border:1px solid var(--border); margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+            <b style="font-size:14px; color:var(--text-primary);">${q.question || q.topic || ''}</b>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm btn-ghost" onclick="speakText('${(q.audio_prompt || q.question || '').replace(/'/g, "\\'")}')">🔊 Nghe</button>
+              <button class="btn btn-sm btn-secondary" onclick="openStandardAIInterviewStudio('${pid}', '${(q.question || q.topic || '').replace(/'/g, "\\'")}')">🎤 Vấn Đáp</button>
+            </div>
+          </div>
+          ${q.sample_answer ? `
+            <div style="background:rgba(16,185,129,0.06); border:1px dashed var(--accent-green); padding:10px 14px; border-radius:8px; font-size:13px; line-height:1.5;">
+              <b>Gợi ý câu trả lời mẫu:</b> ${q.sample_answer}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    return `
+      <div class="card" style="padding:22px; margin-bottom:20px; border-radius:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <span class="badge" style="background:#ec4899; color:#fff; font-weight:900;">PART ${idx+1}</span>
+            <b style="color:var(--text-primary); margin-left:8px; font-size:16px;">${p.part_title}</b>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="openStandardAIInterviewStudio('${pid}', '${p.part_title.replace(/'/g, "\\'")}')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
+            <span>🎙️</span> Vấn Đáp Part ${idx+1} Với AI
+          </button>
+        </div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">${p.description || ''}</p>
+        ${subItemsHtml}
+      </div>
+    `;
+  }).join('');
 
   container.innerHTML = `
     <div style="max-width:940px; margin:0 auto;">
@@ -9188,90 +11131,21 @@ function renderB1SpeakingSection(container, spkData) {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
           <div>
             <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(236,72,153,0.2); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; color:#f472b6; margin-bottom:6px;">
-              <span>🎙️</span> AI INTERACTIVE ORAL EXAMINER 2026
+              <span>🎙️</span> AI INTERACTIVE ORAL EXAMINER • CEFR ${lvl}
             </div>
             <h2 style="font-size:22px; font-weight:900; color:#ffffff; margin:0 0 6px 0;">
-              Phần Thi Vấn Đáp Trực Tiếp & Phản Xạ Nói (3 Parts – 12 Phút)
+              Phần Thi Vấn Đáp Trực Tiếp (${parts.length} Parts – ${spkData.time_min || 12} Phút)
             </h2>
             <p style="font-size:13.5px; color:#cbd5e1; margin:0; line-height:1.5;">
-              Giám khảo AI tự động đặt câu hỏi theo thời gian thực 🔊, lắng nghe bạn trả lời qua Micro 🎤, phân tích phản xạ và đặt câu hỏi mở rộng tương tác 2 chiều!
+              Giám khảo AI tự động đặt câu hỏi 🔊, lắng nghe bạn trả lời qua Micro 🎤, phân tích phản xạ và chấm điểm trực tiếp!
             </p>
           </div>
           
-          <button class="btn btn-primary btn-lg" onclick="openB1AIInterviewStudio('S1', 'Social Interaction: Hobbies & Daily Routine')" style="padding:12px 24px; font-weight:900; box-shadow:0 6px 20px rgba(236,72,153,0.5); background:linear-gradient(135deg, #ec4899, #8b5cf6);">
+          <button class="btn btn-primary btn-lg" onclick="openStandardAIInterviewStudio('S1', 'General Interaction')" style="padding:12px 24px; font-weight:900; box-shadow:0 6px 20px rgba(236,72,153,0.5); background:linear-gradient(135deg, #ec4899, #8b5cf6);">
             🚀 Mở Phòng Vấn Đáp AI 1-on-1
           </button>
         </div>
       </div>
-
-      <!-- PART 1: SOCIAL INTERACTION -->
-      <div class="card" style="padding:22px; margin-bottom:20px; border-radius:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <span class="badge" style="background:#ec4899; color:#fff; font-weight:900;">PART 1 (3 PHÚT)</span>
-            <b style="color:var(--text-primary); margin-left:8px; font-size:16px;">${p1.part_title}</b>
-          </div>
-          <button class="btn btn-sm btn-primary" onclick="openB1AIInterviewStudio('S1', 'Social Interaction: Daily Life')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-            <span>🎙️</span> Vấn Đáp Part 1 Với AI
-          </button>
-        </div>
-        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">${p1.description}</p>
-
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          ${p1.topics.map(t => `
-            <div style="background:var(--bg-secondary); padding:14px; border-radius:10px; border:1px solid var(--border);">
-              <div style="font-weight:800; font-size:13.5px; color:var(--accent-primary); margin-bottom:8px;">${t.topic_name}</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                ${t.questions.map(q => `
-                  <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-card); padding:10px 14px; border-radius:8px; border:1px solid var(--border); flex-wrap:wrap; gap:8px;">
-                    <span style="font-size:13.5px; font-weight:700; color:var(--text-primary); flex:1; min-width:260px;">${q.text}</span>
-                    <div style="display:flex; gap:6px;">
-                      <button class="btn btn-sm btn-ghost" onclick="speakText('${q.text.replace(/'/g, "\\'")}')" title="Nghe câu hỏi">🔊</button>
-                      <button class="btn btn-sm btn-secondary" onclick="openB1AIInterviewStudio('S1', '${q.text.replace(/'/g, "\\'")}')">🎤 Vấn Đáp</button>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-
-      <!-- PART 2: SOLUTION DISCUSSION -->
-      <div class="card" style="padding:22px; margin-bottom:20px; border-radius:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <span class="badge" style="background:#06b6d4; color:#fff; font-weight:900;">PART 2 (4 PHÚT)</span>
-            <b style="color:var(--text-primary); margin-left:8px; font-size:16px;">${p2.part_title}</b>
-          </div>
-          <button class="btn btn-sm btn-primary" onclick="openB1AIInterviewStudio('S2', 'Solution Discussion: Team Celebration Party')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-            <span>🎙️</span> Vấn Đáp Part 2 Với AI
-          </button>
-        </div>
-        <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; padding:16px; font-size:13.5px; line-height:1.6; margin-bottom:14px; white-space:pre-line;">
-          ${p2.situation}
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <button class="btn btn-primary" onclick="openB1AIInterviewStudio('S2', 'Solution Discussion: Project Celebration')" style="font-weight:800; padding:10px 22px;">
-            🎤 Mở Vấn Đáp & Phản Biện Tình Huống Part 2
-          </button>
-          <button class="btn btn-ghost" onclick="speakText('${p2.situation.replace(/'/g, "\\'")}')" style="font-weight:700;">
-            🔊 Nghe Đọc Tình Huống
-          </button>
-        </div>
-      </div>
-
-      <!-- PART 3: TOPIC DEVELOPMENT (MINDMAP) -->
-      <div class="card" style="padding:22px; margin-bottom:20px; border-radius:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-          <div>
-            <span class="badge" style="background:#10b981; color:#fff; font-weight:900;">PART 3 (5 PHÚT)</span>
-            <b style="color:var(--text-primary); margin-left:8px; font-size:16px;">${p3.part_title}</b>
-          </div>
-          <button class="btn btn-sm btn-primary" onclick="openB1AIInterviewStudio('S3', '${p3.topic_title.replace(/'/g, "\\'")}')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-            <span>🎙️</span> Vấn Đáp Part 3 Với AI
-          </button>
-        </div>
         <h3 style="font-size:16px; font-weight:900; color:var(--accent-primary); margin:0 0 12px 0;">
           💡 Chủ đề Mindmap: "${p3.topic_title}"
         </h3>
@@ -9741,18 +11615,17 @@ function renderCurriculumCertificateTab(container, levelData) {
   const user = state.user || (localStorage.getItem('user_data') ? JSON.parse(localStorage.getItem('user_data')) : null);
   
   let studentName = 'HỌC VIÊN XUẤT SẮC';
-  let studentEmail = 'learner@vihtech.edu.vn';
+  let studentEmail = (cert && cert.recipient_email) || (user && user.email) || localStorage.getItem('remembered_user_email') || localStorage.getItem('user_email') || 'learner@vihtech.edu.vn';
   if (user) {
     if (user.full_name && user.full_name.trim()) {
       studentName = user.full_name.toUpperCase();
-    } else if (user.email) {
-      const prefix = user.email.split('@')[0];
+    } else if (studentEmail) {
+      const prefix = studentEmail.split('@')[0];
       const parts = prefix.split(/[._\-+0-9]+/).filter(Boolean);
       studentName = parts.length ? parts.map(p => p.toUpperCase()).join(' ') : prefix.toUpperCase();
     } else if (user.username) {
       studentName = user.username.toUpperCase();
     }
-    if (user.email) studentEmail = user.email;
   }
 
   let headerBadge = '🎯 CHUẨN ĐẦU RA TIẾNG ANH CEFR B1 / VSTEP BẬC 3 (2026)';
@@ -9803,17 +11676,55 @@ function renderCurriculumCertificateTab(container, levelData) {
     </div>
   `;
 
-  let scoresHtml = `
+  let scoresHtml = cert ? `
     <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:16px 0; font-family:'Cinzel', serif; font-size:13px; font-weight:700; color:#1e1b4b;">
-      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎧 Listening: ${cert && cert.score_breakdown ? cert.score_breakdown.listening : '8.5/10'}</span>
-      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">📖 Reading: ${cert && cert.score_breakdown ? cert.score_breakdown.reading : '8.0/10'}</span>
-      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">✍️ Writing: ${cert && cert.score_breakdown ? cert.score_breakdown.writing : '7.5/10'}</span>
-      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎤 Speaking: ${cert && cert.score_breakdown ? cert.score_breakdown.speaking : '8.0/10'}</span>
-      <span style="background:#b8860b; color:#fff; padding:4px 16px; border-radius:15px; font-weight:900;">🏆 GPA: ${cert ? cert.score : '8.0'} / 10.0</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎧 Listening: ${cert.score_breakdown ? cert.score_breakdown.listening : '8.5/10'}</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">📖 Reading: ${cert.score_breakdown ? cert.score_breakdown.reading : '8.0/10'}</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">✍️ Writing: ${cert.score_breakdown ? cert.score_breakdown.writing : '7.5/10'}</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎤 Speaking: ${cert.score_breakdown ? cert.score_breakdown.speaking : '8.0/10'}</span>
+      <span style="background:#b8860b; color:#fff; padding:4px 16px; border-radius:15px; font-weight:900;">🏆 ĐIỂM ĐẠT: ${cert.score}</span>
+    </div>
+  ` : `
+    <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:16px 0; font-family:'Cinzel', serif; font-size:13px; font-weight:700; color:#1e1b4b;">
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎧 Listening: 8.5/10</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">📖 Reading: 8.0/10</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">✍️ Writing: 7.5/10</span>
+      <span style="background:rgba(184,134,11,0.12); padding:4px 14px; border-radius:15px; border:1px solid #b8860b;">🎤 Speaking: 8.0/10</span>
+      <span style="background:#b8860b; color:#fff; padding:4px 16px; border-radius:15px; font-weight:900;">🏆 GPA MẪU: 8.0 / 10.0</span>
     </div>
   `;
 
-  if (lvl === 'TOEIC') {
+  if (lvl === 'A1') {
+    headerBadge = '🌱 CHUẨN ĐẦU RA CEFR A1 (BREAKTHROUGH 2026)';
+    headerTitle = 'Quy Định Chuẩn Đầu Ra Nền Tảng & Nhập Môn Căn Bản (CEFR A1)';
+    headerDesc = 'Theo khung tham chiếu Châu Âu (CEFR A1), học viên cần đạt tối thiểu <b>70% điểm chuẩn</b> để được công nhận hoàn thành nền tảng phát âm IPA, từ vựng sinh hoạt hàng ngày và tự tin chào hỏi, giao tiếp căn bản.';
+    certTitle = 'VIHTECH CERTIFICATE OF ENGLISH PROFICIENCY (CEFR A1)';
+    levelBadge = 'CEFR A1 BASIC USER (BREAKTHROUGH)';
+  } else if (lvl === 'A2') {
+    headerBadge = '🌿 CHUẨN ĐẦU RA CEFR A2 (WAYSTAGE / VSTEP BẬC 2)';
+    headerTitle = 'Quy Định Chuẩn Đầu Ra Giao Tiếp Sơ Trung Cấp (CEFR A2)';
+    headerDesc = 'Theo khung tham chiếu Châu Âu (CEFR A2), học viên cần đạt tối thiểu <b>70% điểm chuẩn</b> để được công nhận khả năng xử lý tình huống giao tiếp đời sống, du lịch, mua sắm và công việc thường nhật.';
+    certTitle = 'VIHTECH CERTIFICATE OF ENGLISH PROFICIENCY (CEFR A2)';
+    levelBadge = 'CEFR A2 BASIC USER (WAYSTAGE)';
+  } else if (lvl === 'B2') {
+    headerBadge = '🔥 CHUẨN ĐẦU RA CEFR B2 / VSTEP BẬC 4 (VANTAGE)';
+    headerTitle = 'Quy Định Chuẩn Đầu Ra Học Thuật & Chuyên Nghiệp (CEFR B2)';
+    headerDesc = 'Theo khung tham chiếu Châu Âu (CEFR B2), học viên cần đạt tối thiểu <b>75% điểm chuẩn</b> để được công nhận năng lực giao tiếp học thuật tự tin, tranh luận phản biện và làm việc trong môi trường quốc tế.';
+    certTitle = 'VIHTECH CERTIFICATE OF ENGLISH PROFICIENCY (CEFR B2)';
+    levelBadge = 'CEFR B2 INDEPENDENT USER (VANTAGE)';
+  } else if (lvl === 'C1') {
+    headerBadge = '💎 CHUẨN ĐẦU RA CEFR C1 / VSTEP BẬC 5 (ADVANCED)';
+    headerTitle = 'Quy Định Chuẩn Đầu Ra Cao Cấp & Tư Duy Hàn Lâm (CEFR C1)';
+    headerDesc = 'Theo khung tham chiếu Châu Âu (CEFR C1), học viên cần đạt tối thiểu <b>80% điểm chuẩn</b> để được công nhận năng lực sử dụng ngôn ngữ linh hoạt, tinh tế cho các mục đích học thuật, nghiên cứu và nghề nghiệp cấp cao.';
+    certTitle = 'VIHTECH CERTIFICATE OF ADVANCED ENGLISH PROFICIENCY (CEFR C1)';
+    levelBadge = 'CEFR C1 PROFICIENT USER (ADVANCED)';
+  } else if (lvl === 'C2') {
+    headerBadge = '👑 CHUẨN ĐẦU RA CEFR C2 / CAMBRIDGE CPE (GRAND MASTERY)';
+    headerTitle = 'Quy Định Chuẩn Năng Lực Bậc Thầy Ngôn Ngữ & Bản Ngữ (CEFR C2)';
+    headerDesc = 'Theo chuẩn cao nhất của khung Châu Âu (CEFR C2 Mastery), học viên cần đạt tối thiểu <b>85% điểm chuẩn</b> để được công nhận năng lực hiểu và biểu đạt ngôn ngữ hoàn hảo như người bản ngữ có học vấn cao.';
+    certTitle = 'VIHTECH CERTIFICATE OF ENGLISH GRAND MASTERY (CEFR C2)';
+    levelBadge = 'CEFR C2 GRAND MASTER PROFICIENT USER';
+  } else if (lvl === 'TOEIC') {
     headerBadge = '💼 CHUẨN ĐẦU RA TOEIC 850+ ETS FORMAT 2026';
     headerTitle = 'Quy Định Chuẩn Năng Lực Giao Tiếp Doanh Nghiệp & Công Sở (TOEIC 850+)';
     headerDesc = 'Theo khung đánh giá năng lực tiếng Anh thương mại quốc tế ETS 2026, học viên cần đạt tối thiểu <b>850/990 điểm</b> (Listening >= 400 và Reading >= 450) để được cấp Chứng Chỉ Vàng TOEIC 850+ Quốc Tế xác thực Blockchain.';

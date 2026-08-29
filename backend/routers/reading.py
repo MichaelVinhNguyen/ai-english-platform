@@ -27,7 +27,7 @@ async def get_articles(level: Optional[str] = None, topic: Optional[str] = None,
     q = select(ReadingArticle)
     if level: q = q.where(ReadingArticle.level == level)
     if topic: q = q.where(ReadingArticle.topic == topic)
-    r = await db.execute(q.limit(20))
+    r = await db.execute(q.limit(100))
     articles = r.scalars().all()
     return [{"id": a.id, "title": a.title, "summary": a.summary,
              "level": a.level, "topic": a.topic, "word_count": a.word_count,

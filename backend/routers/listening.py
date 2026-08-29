@@ -20,7 +20,7 @@ async def get_exercises(level: Optional[str] = None, db: AsyncSession = Depends(
     from backend.database.models import ListeningExercise
     q = select(ListeningExercise)
     if level: q = q.where(ListeningExercise.level == level)
-    r = await db.execute(q.limit(20))
+    r = await db.execute(q.limit(100))
     exercises = r.scalars().all()
     return [{"id": e.id, "title": e.title, "description": e.description,
              "exercise_type": e.exercise_type, "level": e.level,

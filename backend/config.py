@@ -15,6 +15,15 @@ IS_VERCEL = bool(os.getenv("VERCEL"))
 
 if IS_VERCEL:
     DATA_DIR = Path("/tmp/data")
+    tmp_db = Path("/tmp/app.db")
+    bundled_db = BASE_DIR / "data" / "app.db"
+    if not tmp_db.exists() and bundled_db.exists():
+        try:
+            import shutil
+            shutil.copy2(bundled_db, tmp_db)
+            print("[VERCEL] Pre-seeded database copied to /tmp/app.db successfully.")
+        except Exception as e:
+            print(f"[VERCEL] Could not copy bundled DB: {e}")
 else:
     DATA_DIR = BASE_DIR / "data"
 
