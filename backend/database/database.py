@@ -24,15 +24,28 @@ class Base(DeclarativeBase):
     pass
 
 
+_db_initialized = False
+
+async def ensure_db_ready():
+    global _db_initialized
+    if _db_initialized:
+        return
+    try:
+        await init_db()
+        _db_initialized = True
+    except Exception as e:
+        print(f"[DB INIT ERROR] {e}")
+
+
 async def init_db():
-    """Create all tables."""
+    """Create all tables and seed baseline data."""
     async with engine.begin() as conn:
         from backend.database import models  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
         
     # Seed default admin users
-    from sqlalchemy import select
-    from backend.database.models import User
+    from sqlalchemy import select, func
+    from backend.database.models import User, Vocabulary
     from backend.routers.auth import hash_password
     
     async with AsyncSessionLocal() as session:
@@ -68,12 +81,20 @@ async def init_db():
             await session.commit()
             print("[OK] Admin user 'admin' created.")
 
-        # Admin users created cleanly
-        pass
+        # Auto-seed rich data if empty
+        try:
+            vocab_cnt = (await session.execute(select(func.count(Vocabulary.id)))).scalar() or 0
+            if vocab_cnt == 0:
+                print("[AUTO-SEED] Database empty, seeding rich data...")
+                from backend.seed_rich_data import seed_data
+                await seed_data(session)
+        except Exception as seed_err:
+            print(f"[AUTO-SEED WARN] {seed_err}")
 
 
 async def get_db():
-    """Dependency – yield AsyncSession."""
+    """Dependency – yield AsyncSession with guaranteed initialized tables."""
+    await ensure_db_ready()
     async with AsyncSessionLocal() as session:
         try:
             yield session

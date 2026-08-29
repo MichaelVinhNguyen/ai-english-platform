@@ -1,6 +1,4 @@
 import asyncio
-import nltk
-from deep_translator import GoogleTranslator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from collections import defaultdict
@@ -9,18 +7,18 @@ import concurrent.futures
 from backend.database.database import AsyncSessionLocal, init_db
 from backend.database.models import Vocabulary
 
-# Ensure wordnet and words are downloaded
 try:
-    nltk.data.find('corpora/words')
-except LookupError:
-    nltk.download('words')
+    from deep_translator import GoogleTranslator
+except ImportError:
+    GoogleTranslator = None
 
 try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-
-from nltk.corpus import words, wordnet
+    import nltk
+    from nltk.corpus import words, wordnet
+except Exception:
+    nltk = None
+    words = None
+    wordnet = None
 
 async def seed_vocab():
     print("[START] Seeding massive vocabulary...")

@@ -30,18 +30,17 @@ from backend.database.models import (
     Course, Lesson, Badge, Mission, MockTest, QuizQuestion
 )
 
-# NLTK for rich vocabulary corpus
-import nltk
+# NLTK for rich vocabulary corpus (Optional)
 try:
-    nltk.data.find('corpora/words')
-except LookupError:
-    nltk.download('words')
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-
-from nltk.corpus import words, wordnet
+    import nltk
+    try:
+        nltk.data.find('corpora/words')
+    except Exception:
+        pass
+    from nltk.corpus import words, wordnet
+except Exception:
+    words = None
+    wordnet = None
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. GRAMMAR DATA (35 LESSONS A1 -> C2)

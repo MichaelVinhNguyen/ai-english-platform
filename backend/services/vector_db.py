@@ -1,16 +1,23 @@
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.http.models import Distance, VectorParams
+    HAS_QDRANT = True
+except ImportError:
+    HAS_QDRANT = False
+
 from backend.config import settings
 
 class VectorDBService:
     def __init__(self):
+        self.is_connected = False
+        if not HAS_QDRANT:
+            return
         try:
             self.client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
             self.collection_name = settings.QDRANT_COLLECTION
             self._ensure_collection()
             self.is_connected = True
         except Exception as e:
-            print(f"Warning: Could not connect to Qdrant: {e}")
             self.is_connected = False
 
     def _ensure_collection(self):
