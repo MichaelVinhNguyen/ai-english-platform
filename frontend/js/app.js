@@ -2056,7 +2056,14 @@ async function loadVocab() {
   if (level) params.level = level;
   if (topic) params.topic = topic;
   try {
-    const words = await api.vocabulary.list(params);
+    const res = await api.vocabulary.list(params);
+    let words = Array.isArray(res) ? res : (res?.items || res?.cards || []);
+    if (!words || !words.length) {
+      const fcMap = window.STANDALONE_DATA?.flashcards || {};
+      const allWords = [];
+      Object.values(fcMap).forEach(arr => allWords.push(...arr));
+      words = allWords.slice(0, 100);
+    }
     const grid = document.getElementById('vocab-grid');
     if (!grid) return;
     grid.innerHTML = words.length ? words.map(w => {
@@ -2068,18 +2075,18 @@ async function loadVocab() {
             <div style="font-size:18px;font-weight:700">${w.word}</div>
             <div style="font-size:12px;color:var(--accent-cyan)">${w.ipa||''}</div>
           </div>
-          <span class="badge badge-purple">${w.level||'?'}</span>
+          <span class="badge badge-purple">${w.level||'A1'}</span>
         </div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">${(w.definition_vi||'').substring(0,60)}${(w.definition_vi||'').length>60?'...':''}</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:8px">${(w.definition_vi||w.meaning||'').substring(0,60)}${(w.definition_vi||w.meaning||'').length>60?'...':''}</div>
         <div style="display:flex;gap:6px;margin-top:10px;align-items:center;">
-          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();addWordToList(${w.id},'${w.word}')">+ Thêm</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();addWordToList(${w.id||1},'${w.word}')">+ Thêm</button>
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openVocabModal(${wJson})">📖 Chi tiết</button>
           <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="event.stopPropagation();speakText('${w.word.replace(/'/g, "\\'")}')" title="Phát âm">🔊</button>
         </div>
       </div>`;
     }).join('') :
       '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng phù hợp</div>';
-  } catch(e) { toast(e.message, 'error'); }
+  } catch(e) { console.warn(e); }
 }
 
 let searchTimeout;
@@ -2314,9 +2321,15 @@ registerView('grammar', () => `
 let allGrammarRules = [];
 async function loadGrammarRules() {
   try {
-    allGrammarRules = await api.grammar.rules();
-    renderGrammarRules('');
-  } catch {}
+    const res = await api.grammar.rules();
+    allGrammarRules = Array.isArray(res) ? res : (res?.rules || res?.items || (window.STANDALONE_DATA?.grammar_rules || []));
+  } catch {
+    allGrammarRules = window.STANDALONE_DATA?.grammar_rules || [];
+  }
+  if (!allGrammarRules || !allGrammarRules.length) {
+    allGrammarRules = window.STANDALONE_DATA?.grammar_rules || [];
+  }
+  renderGrammarRules('');
 }
 
 window.filterGrammarLevel = (level) => {
@@ -2700,23 +2713,26 @@ registerView('quiz', () => `
       if (genBtn) genBtn.click();
     }, 150);
   }
+  await load50QuizTopics();
 });
 
 // ── 50 QUIZ TOPICS CONTROLLER ────────────────────────────────────────────────
 window.load50QuizTopics = async () => {
   const container = document.getElementById('quiz-50-grid-container');
   const loading = document.getElementById('quiz-50-loading');
-  if (!container) return;
 
   try {
     const res = await api.quiz.topics50Meta();
-    state.all50QuizTopics = res.topics || [];
-    renderQuiz50TopicsGrid(state.all50QuizTopics);
-    if (loading) loading.style.display = 'none';
-    if (container) container.style.display = 'grid';
+    state.all50QuizTopics = (res && res.topics && res.topics.length) ? res.topics : (window.STANDALONE_DATA?.quiz_topics_meta || []);
   } catch (err) {
-    if (loading) loading.innerHTML = `<div style="color:var(--accent-red);padding:20px">Lỗi nạp 50 chủ đề quiz: ${err.message}</div>`;
+    state.all50QuizTopics = window.STANDALONE_DATA?.quiz_topics_meta || [];
   }
+  if (!state.all50QuizTopics || !state.all50QuizTopics.length) {
+    state.all50QuizTopics = window.STANDALONE_DATA?.quiz_topics_meta || [];
+  }
+  renderQuiz50TopicsGrid(state.all50QuizTopics);
+  if (loading) loading.style.display = 'none';
+  if (container) container.style.display = 'grid';
 };
 
 window.renderQuiz50TopicsGrid = (topics) => {
@@ -4343,17 +4359,20 @@ window.switchFlashcardSubTab = (tabName, btnElem) => {
 };
 
 window.loadCuratedTopicsGrid = async () => {
+  const loadingEl = document.getElementById('topics-grid-loading');
+  const gridEl = document.getElementById('curated-topics-grid-container');
   try {
     const res = await api.vocabulary.flashcardTopicsMeta();
-    state.flashcardTopics = res.topics || [];
-    document.getElementById('topics-grid-loading').style.display = 'none';
-    document.getElementById('curated-topics-grid-container').style.display = 'grid';
-    renderCuratedTopicsGrid('ALL', '');
+    state.flashcardTopics = (res && res.topics && res.topics.length) ? res.topics : (window.STANDALONE_DATA?.flashcard_topics_meta || []);
   } catch(e) {
-    document.getElementById('topics-grid-loading').innerHTML = `
-      <div style="color:#f87171;font-size:14px">Không thể tải danh sách chủ đề: ${e.message}</div>
-    `;
+    state.flashcardTopics = window.STANDALONE_DATA?.flashcard_topics_meta || [];
   }
+  if (!state.flashcardTopics || !state.flashcardTopics.length) {
+    state.flashcardTopics = window.STANDALONE_DATA?.flashcard_topics_meta || [];
+  }
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (gridEl) gridEl.style.display = 'grid';
+  renderCuratedTopicsGrid('ALL', '');
 };
 
 window.filterCuratedTopics = (category, pillElem) => {
@@ -6665,9 +6684,15 @@ registerView('reading', () => `
 let allReadingArticles = [];
 async function loadReadingArticles() {
   try {
-    allReadingArticles = await api.reading.articles();
-    renderReadingArticles('');
-  } catch {}
+    const res = await api.reading.articles();
+    allReadingArticles = Array.isArray(res) ? res : (res?.articles || res?.items || (window.STANDALONE_DATA?.reading_articles || []));
+  } catch {
+    allReadingArticles = window.STANDALONE_DATA?.reading_articles || [];
+  }
+  if (!allReadingArticles || !allReadingArticles.length) {
+    allReadingArticles = window.STANDALONE_DATA?.reading_articles || [];
+  }
+  renderReadingArticles('');
 }
 
 window.filterReadingLevel = (level) => {
@@ -6981,9 +7006,15 @@ registerView('listening', () => `
 let allListeningExercises = [];
 async function loadListeningExercises() {
   try {
-    allListeningExercises = await api.listening.exercises();
-    renderListeningExercises('');
-  } catch {}
+    const res = await api.listening.exercises();
+    allListeningExercises = Array.isArray(res) ? res : (res?.exercises || res?.items || (window.STANDALONE_DATA?.listening_exercises || []));
+  } catch {
+    allListeningExercises = window.STANDALONE_DATA?.listening_exercises || [];
+  }
+  if (!allListeningExercises || !allListeningExercises.length) {
+    allListeningExercises = window.STANDALONE_DATA?.listening_exercises || [];
+  }
+  renderListeningExercises('');
 }
 
 window.filterListeningLevel = (level) => {

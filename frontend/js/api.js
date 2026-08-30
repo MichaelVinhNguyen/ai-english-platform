@@ -152,11 +152,14 @@ const api = {
       }
       return { total: cards.length, cards };
     }
-    if (path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore') || path.startsWith('/vocabulary/')) {
+    if (path.startsWith('/vocabulary/topics')) {
+      return { topics: ['Daily Life & Routines', 'Food, Cooking & Dining', 'Travel & Tourism', 'Technology & AI', 'Business & Career', 'Health & Wellness', 'Education & Science', 'Entertainment & Arts', 'Sports & Fitness', 'Environment & Nature'] };
+    }
+    if (path === '/vocabulary/' || path.startsWith('/vocabulary/?') || path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore')) {
       const allWords = [];
       const fcMap = sd.flashcards || {};
       Object.values(fcMap).forEach(arr => allWords.push(...arr));
-      return { total: allWords.length, items: allWords.slice(0, 100), cards: allWords.slice(0, 50) };
+      return allWords.slice(0, 100);
     }
 
     // Quizzes
