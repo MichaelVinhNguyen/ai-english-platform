@@ -114261,13 +114261,3 @@ EXAM_BANK_30_TESTS = {
         }
     ]
 }
-
-try:
-    from backend.seed_business_tech_full_curriculum import (
-        BUSINESS_EXAM_BANK_30, TECH_EXAM_BANK_30
-    )
-    EXAM_BANK_30_TESTS["BUSINESS"] = BUSINESS_EXAM_BANK_30
-    EXAM_BANK_30_TESTS["TECH"] = TECH_EXAM_BANK_30
-except Exception as _e:
-    pass
-

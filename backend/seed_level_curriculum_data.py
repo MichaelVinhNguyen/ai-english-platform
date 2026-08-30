@@ -7235,6 +7235,8 @@ try:
         LEVEL_CURRICULUM_DATA["C2"]["modules"] = C2_EXTENDED_MODULES
     if "TOEIC" in LEVEL_CURRICULUM_DATA:
         LEVEL_CURRICULUM_DATA["TOEIC"]["modules"] = TOEIC_EXTENDED_MODULES
+    if "IELTS" in LEVEL_CURRICULUM_DATA:
+        LEVEL_CURRICULUM_DATA["IELTS"]["modules"] = IELTS_EXTENDED_MODULES
     try:
         from backend.seed_business_tech_full_curriculum import (
             BUSINESS_EXTENDED_MODULES, TECH_EXTENDED_MODULES
