@@ -214,6 +214,58 @@
     .flashcard-side.back {
       transform: rotateY(180deg) !important;
     }
+
+    /* ── LESSON STUDIO 8 STEPS ── */
+    .lesson-studio-steps {
+      display: flex !important;
+      background: var(--bg-secondary) !important;
+      border-bottom: 1px solid var(--border) !important;
+      overflow-x: auto !important;
+      padding: 10px 16px !important;
+      gap: 8px !important;
+      scrollbar-width: thin !important;
+    }
+    .lesson-studio-steps::-webkit-scrollbar {
+      height: 5px !important;
+    }
+    .lesson-studio-steps::-webkit-scrollbar-thumb {
+      background: rgba(124, 58, 237, 0.3) !important;
+      border-radius: 4px !important;
+    }
+    .lesson-step-tab {
+      padding: 8px 14px !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      color: #334155 !important;
+      background: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      border-radius: 20px !important;
+      cursor: pointer !important;
+      white-space: nowrap !important;
+      transition: all 0.25s ease !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+      flex-shrink: 0 !important;
+    }
+    .lesson-step-tab:hover {
+      border-color: #a855f7 !important;
+      color: #7c3aed !important;
+      transform: translateY(-1px) !important;
+    }
+    .lesson-step-tab.active {
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%) !important;
+      border-color: transparent !important;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45) !important;
+      font-weight: 800 !important;
+    }
+    .lesson-step-tab.completed {
+      border-color: #10b981 !important;
+      color: #059669 !important;
+      background: rgba(16, 185, 129, 0.08) !important;
+    }
   </style>
 </head>
 <body>

@@ -2336,23 +2336,28 @@ function renderGrammarRules(level) {
   if (!grid) return;
   const filtered = level ? allGrammarRules.filter(r => r.level === level) : allGrammarRules;
   grid.className = 'curated-topic-showcase-grid';
-  grid.innerHTML = filtered.length ? filtered.map(r => {
-    const rJson = JSON.stringify(r).replace(/"/g, '&quot;');
+  grid.innerHTML = filtered.length ? filtered.map((r, idx) => {
     const tag = r.category || 'grammar';
     return `
-      <div class="curated-topic-showcase-card" onclick="openGrammarModal(${rJson})">
+      <div class="curated-topic-showcase-card" onclick="openGrammarRuleByIndex(${idx}, '${level || ''}')">
         <div class="topic-card-top-row">
           <span class="topic-pill-level">${r.level || 'A1'}</span>
           <span class="topic-pill-tag">${tag}</span>
         </div>
         <div class="topic-card-title">${r.title}</div>
-        <div class="topic-card-desc">${r.explanation_vi ? (r.explanation_vi.length > 55 ? r.explanation_vi.substring(0, 52) + '...' : r.explanation_vi) : '...'}</div>
+        <div class="topic-card-desc">${r.explanation_vi ? (r.explanation_vi.length > 55 ? r.explanation_vi.substring(0, 52) + '...' : r.explanation_vi) : (r.explanation ? (r.explanation.length > 55 ? r.explanation.substring(0, 52) + '...' : r.explanation) : '...')}</div>
         <div class="topic-card-action">
           📖 Nhấn để học chi tiết →
         </div>
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài ngữ pháp nào ở cấp độ này</div>';
 }
+
+window.openGrammarRuleByIndex = (idx, level) => {
+  const filtered = level ? allGrammarRules.filter(r => r.level === level) : allGrammarRules;
+  const r = filtered[idx] || allGrammarRules[idx];
+  if (r) openGrammarModal(r);
+};
 
 window.openGrammarModal = (r) => {
   const body = document.getElementById('modal-study-body');
@@ -2723,19 +2728,23 @@ window.renderQuiz50TopicsGrid = (topics) => {
     return;
   }
 
-  container.innerHTML = topics.map(t => `
-    <div class="curated-topic-showcase-card" onclick="start50QuizTopic('${t.name.replace(/'/g, "\\'")}')">
-      <div class="topic-card-top-row">
-        <span class="topic-pill-level">${t.total_questions || 25} Câu Hỏi</span>
-        <span class="topic-pill-tag">${t.category || 'Quiz'}</span>
+  container.innerHTML = topics.map(t => {
+    const topicName = t.name || t.topic || t.topic_name || 'Bài Tập Trắc Nghiệm';
+    const escapedTopic = topicName.replace(/'/g, "\\'");
+    return `
+      <div class="curated-topic-showcase-card" onclick="start50QuizTopic('${escapedTopic}')">
+        <div class="topic-card-top-row">
+          <span class="topic-pill-level">${t.total_questions || 25} Câu Hỏi</span>
+          <span class="topic-pill-tag">${t.category || 'Quiz'}</span>
+        </div>
+        <div class="topic-card-title">${topicName}</div>
+        <div class="topic-card-desc">${t.description ? (t.description.length > 55 ? t.description.substring(0, 52) + '...' : t.description) : '...'}</div>
+        <div class="topic-card-action">
+          📖 Nhấn để làm bài ngay →
+        </div>
       </div>
-      <div class="topic-card-title">${t.name}</div>
-      <div class="topic-card-desc">${t.description ? (t.description.length > 55 ? t.description.substring(0, 52) + '...' : t.description) : '...'}</div>
-      <div class="topic-card-action">
-        📖 Nhấn để làm bài ngay →
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 };
 
 window.filterQuiz50Grid = (cat, btnElem) => {
@@ -6677,10 +6686,9 @@ function renderReadingArticles(level) {
   const grid = document.getElementById('reading-articles-grid');
   if (!grid) return;
   const filtered = level ? allReadingArticles.filter(a => a.level === level) : allReadingArticles;
-  grid.innerHTML = filtered.length ? filtered.map(a => {
-    const aJson = JSON.stringify(a).replace(/"/g, '&quot;');
+  grid.innerHTML = filtered.length ? filtered.map((a, idx) => {
     return `
-      <div class="card" onclick="openReadingModal(${aJson})" style="cursor:pointer">
+      <div class="card" onclick="openReadingArticleByIndex(${idx}, '${level || ''}')" style="cursor:pointer">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px">
           <span class="badge badge-purple">${a.level||'?'}</span>
           <span class="badge badge-cyan">${a.article_type||''}</span>
@@ -6694,6 +6702,12 @@ function renderReadingArticles(level) {
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài đọc nào ở cấp độ này</div>';
 }
+
+window.openReadingArticleByIndex = (idx, level) => {
+  const filtered = level ? allReadingArticles.filter(a => a.level === level) : allReadingArticles;
+  const a = filtered[idx] || allReadingArticles[idx];
+  if (a) openReadingModal(a);
+};
 
 window.openReadingModal = (a) => {
   const body = document.getElementById('modal-study-body');
@@ -6988,10 +7002,9 @@ function renderListeningExercises(level) {
   const grid = document.getElementById('listening-exercises-grid');
   if (!grid) return;
   const filtered = level ? allListeningExercises.filter(e => e.level === level) : allListeningExercises;
-  grid.innerHTML = filtered.length ? filtered.map(e => {
-    const eJson = JSON.stringify(e).replace(/"/g, '&quot;');
+  grid.innerHTML = filtered.length ? filtered.map((e, idx) => {
     return `
-      <div class="card" onclick="openListeningModal(${eJson})" style="cursor:pointer">
+      <div class="card" onclick="openListeningExerciseByIndex(${idx}, '${level || ''}')" style="cursor:pointer">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px">
           <span class="badge badge-purple">${e.level||'?'}</span>
           <span class="badge badge-cyan">${e.exercise_type||''}</span>
@@ -7005,6 +7018,12 @@ function renderListeningExercises(level) {
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài nghe nào ở cấp độ này</div>';
 }
+
+window.openListeningExerciseByIndex = (idx, level) => {
+  const filtered = level ? allListeningExercises.filter(e => e.level === level) : allListeningExercises;
+  const e = filtered[idx] || allListeningExercises[idx];
+  if (e) openListeningModal(e);
+};
 
 window.openListeningModal = (e) => {
   const body = document.getElementById('modal-study-body');

@@ -119,15 +119,14 @@ const api = {
     }
 
     // Flashcards & Vocabulary
-    if (path === '/vocabulary/flashcard-topics-meta') {
+    if (path.startsWith('/vocabulary/flashcard-topics-meta')) {
       return { topics: sd.flashcard_topics_meta || [], total_topics: (sd.flashcard_topics_meta || []).length };
     }
     if (path.startsWith('/vocabulary/flashcards/curated/')) {
-      const rawTopic = decodeURIComponent(path.split('/').pop());
+      const rawTopic = decodeURIComponent(path.split('/').pop().split('?')[0]);
       const fcMap = sd.flashcards || {};
       let cards = fcMap[rawTopic] || [];
       if (!cards.length) {
-        // Fallback search
         const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === rawTopic.toLowerCase());
         if (matchKey) cards = fcMap[matchKey];
         else cards = Object.values(fcMap)[0] || [];
@@ -136,22 +135,37 @@ const api = {
     }
     if (path.startsWith('/vocabulary/flashcards/deck')) {
       const fcMap = sd.flashcards || {};
-      const firstCards = Object.values(fcMap)[0] || [];
-      return { total: firstCards.length, cards: firstCards };
+      let topic = null;
+      if (path.includes('?')) {
+        const params = new URLSearchParams(path.split('?')[1]);
+        topic = params.get('topic');
+      }
+      let cards = [];
+      if (topic && fcMap[topic]) {
+        cards = fcMap[topic];
+      } else if (topic) {
+        const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === topic.toLowerCase());
+        if (matchKey) cards = fcMap[matchKey];
+      }
+      if (!cards.length) {
+        cards = Object.values(fcMap)[0] || [];
+      }
+      return { total: cards.length, cards };
     }
-    if (path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore')) {
+    if (path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore') || path.startsWith('/vocabulary/')) {
       const allWords = [];
       const fcMap = sd.flashcards || {};
       Object.values(fcMap).forEach(arr => allWords.push(...arr));
-      return { total: allWords.length, items: allWords.slice(0, 100) };
+      return { total: allWords.length, items: allWords.slice(0, 100), cards: allWords.slice(0, 50) };
     }
 
     // Quizzes
-    if (path === '/quiz/topics-50-meta') {
+    if (path.startsWith('/quiz/topics-50-meta')) {
       return { topics: sd.quiz_topics_meta || [], total_topics: (sd.quiz_topics_meta || []).length };
     }
-    if (path.startsWith('/quiz/topic-50/')) {
-      const rawTopic = decodeURIComponent(path.split('/').pop());
+    if (path.startsWith('/quiz/topic-questions/') || path.startsWith('/quiz/topic-50/')) {
+      const pathPart = path.startsWith('/quiz/topic-questions/') ? path.replace('/quiz/topic-questions/', '') : path.replace('/quiz/topic-50/', '');
+      const rawTopic = decodeURIComponent(pathPart.split('?')[0]);
       const qzMap = sd.quizzes || {};
       let questions = qzMap[rawTopic] || [];
       if (!questions.length) {
