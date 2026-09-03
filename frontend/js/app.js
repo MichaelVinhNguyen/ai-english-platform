@@ -29,9 +29,9 @@ applyTheme();
 
 const i18n = {
   'dashboard': { en: 'Dashboard', vi: 'Tổng quan' },
-  'levelCurriculum': { en: 'Level Curriculum & Exams', vi: 'Học Theo Cấp Độ & Luyện Đề' },
-  'learningPath': { en: 'Learning Path', vi: 'Lộ trình & Kế hoạch' },
-  'teacher': { en: 'AI Teacher', vi: 'Giáo viên AI' },
+  'levelCurriculum': { en: 'Level Curriculum & Exams', vi: 'Học theo cấp độ & Luyện đề' },
+  'learningPath': { en: 'Learning Path', vi: 'Lộ trình học' },
+  'teacher': { en: 'AI 3D Teacher', vi: 'Giáo viên AI 3D' },
   'vocabulary': { en: 'Vocabulary', vi: 'Từ vựng' },
   'grammar': { en: 'Grammar', vi: 'Ngữ pháp' },
   'listening': { en: 'Listening', vi: 'Luyện nghe' },
@@ -39,13 +39,13 @@ const i18n = {
   'reading': { en: 'Reading', vi: 'Đọc hiểu' },
   'writing': { en: 'Writing', vi: 'Luyện viết' },
   'translation': { en: 'Translation', vi: 'Dịch thuật' },
-  'quiz': { en: 'Exercises', vi: 'Bài tập & Quiz' },
+  'quiz': { en: 'Exercises & Quizzes', vi: 'Bài tập & Quiz' },
   'flashcards': { en: 'Flashcards', vi: 'Flashcard' },
   'courses': { en: 'Courses', vi: 'Khóa học' },
   'gamification': { en: 'Achievements', vi: 'Thành tích' },
   'community': { en: 'Community', vi: 'Cộng đồng' },
   'profile': { en: 'Profile', vi: 'Hồ sơ' },
-  'admin': { en: 'Admin Panel', vi: 'Quản trị' }
+  'admin': { en: 'Admin Panel & AI Settings', vi: 'CMS Quản trị & Cài đặt AI' }
 };
 
 window.toggleLang = () => {
@@ -55,17 +55,17 @@ window.toggleLang = () => {
 };
 
 function applyLang() {
-  document.getElementById('lang-toggle').textContent = state.lang === 'vi' ? '🌍 EN' : '🌍 VI';
+  const langToggle = document.getElementById('lang-toggle');
+  if (langToggle) langToggle.textContent = state.lang === 'vi' ? '🌍 EN' : '🌍 VI';
   document.querySelectorAll('.nav-item').forEach(el => {
     const view = el.dataset.view;
     if (i18n[view]) {
-      // Find the text node after the span icon and replace it
       const iconSpan = el.querySelector('.nav-icon');
-      if (iconSpan) {
-        el.innerHTML = '';
-        el.appendChild(iconSpan);
-        el.appendChild(document.createTextNode(' ' + i18n[view][state.lang]));
-      }
+      const badgeSpan = el.querySelector('.nav-badge');
+      el.innerHTML = '';
+      if (iconSpan) el.appendChild(iconSpan);
+      el.appendChild(document.createTextNode(' ' + i18n[view][state.lang] + ' '));
+      if (badgeSpan) el.appendChild(badgeSpan);
     }
   });
   const pageTitle = document.getElementById('page-title');

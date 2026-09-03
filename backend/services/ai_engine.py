@@ -10,6 +10,8 @@ import time
 import uuid
 from typing import Optional, List, Dict, Any
 
+from backend.config import settings
+
 try:
     from google import genai
     from google.genai import types as genai_types

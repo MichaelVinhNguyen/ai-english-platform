@@ -156,10 +156,31 @@ const api = {
       return { topics: ['Daily Life & Routines', 'Food, Cooking & Dining', 'Travel & Tourism', 'Technology & AI', 'Business & Career', 'Health & Wellness', 'Education & Science', 'Entertainment & Arts', 'Sports & Fitness', 'Environment & Nature'] };
     }
     if (path === '/vocabulary/' || path.startsWith('/vocabulary/?') || path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore')) {
-      const allWords = [];
-      const fcMap = sd.flashcards || {};
-      Object.values(fcMap).forEach(arr => allWords.push(...arr));
-      return allWords.slice(0, 100);
+      let pool = (sd.vocabularies && sd.vocabularies.length) ? sd.vocabularies : [];
+      if (!pool.length) {
+        const fcMap = sd.flashcards || {};
+        Object.values(fcMap).forEach(arr => pool.push(...arr));
+      }
+      let params = {};
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        usp.forEach((v, k) => { params[k] = v; });
+      }
+      let filtered = pool;
+      if (params.letter) {
+        filtered = filtered.filter(w => (w.word || '').toUpperCase().startsWith(params.letter.toUpperCase()));
+      }
+      if (params.level) {
+        filtered = filtered.filter(w => w.level === params.level);
+      }
+      if (params.topic) {
+        filtered = filtered.filter(w => (w.topic || '').toLowerCase().includes(params.topic.toLowerCase()));
+      }
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = pool.filter(w => (w.word || '').toLowerCase().includes(q) || (w.definition_vi || w.meaning || '').toLowerCase().includes(q));
+      }
+      return filtered.slice(0, 120);
     }
 
     // Quizzes
@@ -180,9 +201,33 @@ const api = {
     }
 
     // Grammar, Reading, Listening, Speaking
-    if (path === '/grammar/rules') return sd.grammar_rules || [];
-    if (path === '/reading/articles') return sd.reading_articles || [];
-    if (path === '/listening/exercises' || path === '/listening/lessons') return sd.listening_exercises || [];
+    if (path.startsWith('/grammar/rules')) {
+      let rules = sd.grammar_rules || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) rules = rules.filter(r => r.level === lvl);
+      }
+      return rules;
+    }
+    if (path.startsWith('/reading/articles')) {
+      let articles = sd.reading_articles || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) articles = articles.filter(a => a.level === lvl);
+      }
+      return articles;
+    }
+    if (path.startsWith('/listening/exercises') || path.startsWith('/listening/lessons')) {
+      let exercises = sd.listening_exercises || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) exercises = exercises.filter(e => e.level === lvl);
+      }
+      return exercises;
+    }
     if (path.startsWith('/speaking/topics')) {
       const lvl = 'B1';
       return { topics: (sd.speaking_topics && sd.speaking_topics[lvl]) || [] };
