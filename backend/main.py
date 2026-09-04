@@ -33,6 +33,7 @@ from backend.routers.speaking import speaking_router
 from backend.routers.reading import reading_router
 from backend.routers.learning_path import router as learning_path_router
 from backend.routers.level_curriculum import router as level_curriculum_router
+from backend.routers.common_phrases import router as common_phrases_router
 
 FRONTEND_DIR = BASE_DIR / "frontend"
 
@@ -94,6 +95,7 @@ app.include_router(speaking_router)
 app.include_router(reading_router)
 app.include_router(learning_path_router)
 app.include_router(level_curriculum_router)
+app.include_router(common_phrases_router)
 
 # ── Admin Seed Endpoint ────────────────────────────────────────────────────────
 @app.post("/api/admin/seed-rich-data", tags=["admin"])
