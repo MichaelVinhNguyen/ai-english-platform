@@ -1736,6 +1736,7 @@ registerView('vocabulary', () => `
           <option value="">Tất cả chủ đề</option>
         </select>
       </div>
+      <div id="vocab-status-banner" style="margin-bottom:14px;font-size:13px;color:var(--text-secondary)"></div>
       <div class="grid grid-auto" id="vocab-grid"></div>
     </div>
 
@@ -2047,7 +2048,7 @@ window.openVocabModal = (w) => {
 };
 
 async function loadVocab() {
-  const search = document.getElementById('vocab-search')?.value;
+  const search = document.getElementById('vocab-search')?.value?.trim();
   const level = document.getElementById('vocab-level')?.value;
   const topic = document.getElementById('vocab-topic')?.value;
   const params = {};
@@ -2058,11 +2059,22 @@ async function loadVocab() {
   try {
     const res = await api.vocabulary.list(params);
     let words = Array.isArray(res) ? res : (res?.items || res?.cards || []);
-    if (!words || !words.length) {
+    if ((!words || !words.length) && !params.letter && !params.search && !params.level && !params.topic) {
       const fcMap = window.STANDALONE_DATA?.flashcards || {};
       const allWords = [];
       Object.values(fcMap).forEach(arr => allWords.push(...arr));
       words = allWords.slice(0, 100);
+    }
+    const banner = document.getElementById('vocab-status-banner');
+    if (banner) {
+      const letterInfo = window.currentVocabLetter ? `bắt đầu bằng chữ cái [${window.currentVocabLetter}]` : 'tất cả chữ cái A-Z';
+      const levelInfo = level ? ` • Trình độ ${level}` : '';
+      const topicInfo = topic ? ` • Chủ đề ${topic}` : '';
+      const searchInfo = search ? ` • Tìm kiếm "${search}"` : '';
+      banner.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-glass);padding:8px 14px;border-radius:10px;border:1px solid var(--border)">
+        <span>📖 Đang hiển thị <strong>${words.length}</strong> từ vựng (${letterInfo}${levelInfo}${topicInfo}${searchInfo})</span>
+        ${window.currentVocabLetter ? `<button class="btn btn-ghost btn-sm" onclick="filterVocabLetter('')" style="padding:2px 8px;font-size:11.5px">✖ Bỏ lọc chữ cái</button>` : ''}
+      </div>`;
     }
     const grid = document.getElementById('vocab-grid');
     if (!grid) return;
@@ -2085,7 +2097,7 @@ async function loadVocab() {
         </div>
       </div>`;
     }).join('') :
-      '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng phù hợp</div>';
+      `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng nào ${window.currentVocabLetter ? 'bắt đầu bằng chữ cái "' + window.currentVocabLetter + '"' : ''} phù hợp với bộ lọc hiện tại.</div>`;
   } catch(e) { console.warn(e); }
 }
 
@@ -5482,8 +5494,8 @@ registerView('speaking', () => `
     <div id="speaking-panel-daily" class="module-panel" style="display:none">
       <div id="speaking-topics">
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center">
-          <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Lọc theo CEFR:</span>
-          ${['A1','A2','B1','B2','C1','C2'].map((l,idx)=>`<button class="btn btn-sm ${idx===2?'btn-primary':'btn-ghost'} speaking-level-btn" onclick="filterSpeakingLevel('${l}')">${l}</button>`).join('')}
+          <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Lọc theo cấp độ & kỳ thi:</span>
+          ${['A1','A2','B1','B2','C1','C2','TOEIC','IELTS'].map((l,idx)=>`<button class="btn btn-sm ${idx===2?'btn-primary':'btn-ghost'} speaking-level-btn" onclick="filterSpeakingLevel('${l}')">${l}</button>`).join('')}
         </div>
         <div class="grid grid-2" id="topics-grid">
           <div class="loading-dots" style="grid-column:1/-1;justify-content:center"><span></span><span></span><span></span></div>
@@ -7033,18 +7045,18 @@ function renderListeningExercises(level) {
   const grid = document.getElementById('listening-exercises-grid');
   if (!grid) return;
   const filtered = level ? allListeningExercises.filter(e => e.level === level) : allListeningExercises;
+  grid.className = 'curated-topic-showcase-grid';
   grid.innerHTML = filtered.length ? filtered.map((e, idx) => {
     return `
-      <div class="card" onclick="openListeningExerciseByIndex(${idx}, '${level || ''}')" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-          <span class="badge badge-purple">${e.level||'?'}</span>
-          <span class="badge badge-cyan">${e.exercise_type||''}</span>
+      <div class="curated-topic-showcase-card" onclick="openListeningExerciseByIndex(${idx}, '${level || ''}')">
+        <div class="topic-card-top-row">
+          <span class="topic-pill-level">${e.level || 'B1'}</span>
+          <span class="topic-pill-tag">${e.exercise_type || 'listening'}</span>
         </div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text-primary)">${e.title}</div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">${e.description||''}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted)">
-          <span>⏱️ 2-3 phút</span>
-          <span style="color:var(--accent-primary);font-weight:600">🎧 Nghe & Luyện →</span>
+        <div class="topic-card-title">${e.title}</div>
+        <div class="topic-card-desc">${e.description || 'Luyện kỹ năng nghe hiểu, phân tích hội thoại và làm bài tập trắc nghiệm tương tác.'}</div>
+        <div class="topic-card-action">
+          🎧 Nhấn để nghe bài & làm bài tập →
         </div>
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài nghe nào ở cấp độ này</div>';

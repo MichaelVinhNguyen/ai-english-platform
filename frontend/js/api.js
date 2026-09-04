@@ -180,7 +180,7 @@ const api = {
         const q = params.search.toLowerCase();
         filtered = pool.filter(w => (w.word || '').toLowerCase().includes(q) || (w.definition_vi || w.meaning || '').toLowerCase().includes(q));
       }
-      return filtered.slice(0, 120);
+      return filtered.slice(0, 300);
     }
 
     // Quizzes
@@ -229,8 +229,14 @@ const api = {
       return exercises;
     }
     if (path.startsWith('/speaking/topics')) {
-      const lvl = 'B1';
-      return { topics: (sd.speaking_topics && sd.speaking_topics[lvl]) || [] };
+      let lvl = 'B1';
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        lvl = usp.get('level') || 'B1';
+      }
+      const stMap = sd.speaking_topics || {};
+      const topics = stMap[lvl] || stMap['B1'] || [];
+      return { level: lvl, topics };
     }
     if (path === '/speaking/evaluate') {
       return { overall_score: 88, fluency: 86, pronunciation: 90, vocabulary: 88, feedback: "Phát âm rất rõ ràng, trọng âm chuẩn xác và ngữ điệu tự nhiên!", xp_earned: 50 };

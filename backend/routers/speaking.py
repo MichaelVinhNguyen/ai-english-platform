@@ -30,33 +30,28 @@ async def evaluate_speaking(data: SpeakingEval, current_user: User = Depends(get
 
 @speaking_router.get("/topics")
 async def speaking_topics(level: str = "B1", current_user: User = Depends(get_current_user)):
-    topics = {
-        "A1": [
-            "Giới thiệu bản thân & Nghề nghiệp", "Gia đình & Người thân", "Màu sắc, Trang phục & Số đếm",
-            "Món ăn & Đồ uống yêu thích", "Hoạt động sinh hoạt buổi sáng", "Thời tiết & Các mùa trong năm"
-        ],
-        "A2": [
-            "Sở thích & Hoạt động giải trí cuối tuần", "Kỳ nghỉ du lịch đáng nhớ", "Miêu tả hình ảnh & Không gian sống",
-            "Hỏi và chỉ đường trong thành phố", "Mua sắm quần áo tại trung tâm thương mại", "Đặt phòng khách sạn & Gọi món ăn"
-        ],
-        "B1": [
-            "Phỏng vấn xin việc: Điểm mạnh & Điểm yếu", "Vấn đề bảo vệ môi trường & Rác thải nhựa", "Ảnh hưởng của mạng xã hội đối với giới trẻ",
-            "Thuyết trình dự án công việc trước đồng nghiệp", "Kế hoạch phát triển sự nghiệp 5 năm tới", "Lợi ích của việc đọc sách mỗi ngày"
-        ],
-        "B2": [
-            "Tranh luận: Trí tuệ nhân tạo (AI) có thay thế con người?", "Văn hóa làm việc từ xa (Remote Work) vs Trực tiếp", "Toàn cầu hóa kinh tế và giữ gìn bản sắc dân tộc",
-            "Đạo đức trong công nghệ sinh học và chỉnh sửa gen", "Chiến lược marketing & Thu hút khách hàng Gen Z", "Khủng hoảng năng lượng & Chuyển đổi xanh"
-        ],
-        "C1": [
-            "Triết học nhận thức luận & Trực giác con người", "Chính sách tiền tệ vĩ mô & Lạm phát toàn cầu", "Đạo đức thuật toán & Trách nhiệm xã hội của Big Tech",
-            "Kiến trúc đô thị bền vững & Thành phố thông minh", "Nghiên cứu khoa học thần kinh & Tính dẻo não bộ", "Địa chính trị chuỗi cung ứng khoáng sản đất hiếm"
-        ],
-        "C2": [
-            "Academic Oxford Debate: Universal Basic Income", "Theoretical Limits of Artificial General Intelligence", "Epistemological Synthesis in Modern Critical Theory",
-            "Quantum Information Theory & Cyber Warfare", "International Maritime Sovereignty Under UNCLOS", "Astrobiology & Extraterrestrial Biosignatures"
-        ],
-    }
-    return {"level": level, "topics": topics.get(level, topics["B1"])}
+    try:
+        from scripts.generate_all_levels_30_lessons import (
+            A1_TOPICS, A2_TOPICS, B1_TOPICS, B2_TOPICS, C1_TOPICS, C2_TOPICS,
+            TOEIC_TOPICS, IELTS_TOPICS
+        )
+        topics_map = {
+            "A1": [t[0] for t in A1_TOPICS],
+            "A2": [t[0] for t in A2_TOPICS],
+            "B1": [t[0] for t in B1_TOPICS],
+            "B2": [t[0] for t in B2_TOPICS],
+            "C1": [t[0] for t in C1_TOPICS],
+            "C2": [t[0] for t in C2_TOPICS],
+            "TOEIC": [t[0] for t in TOEIC_TOPICS],
+            "IELTS": [t[0] for t in IELTS_TOPICS],
+        }
+        res_topics = topics_map.get(level.upper(), topics_map.get("B1", []))
+        return {"level": level, "topics": res_topics}
+    except Exception:
+        fallback_topics = [
+            f"Chủ đề luyện nói {level} chuyên sâu #{i+1}" for i in range(30)
+        ]
+        return {"level": level, "topics": fallback_topics}
 
 
 @speaking_router.get("/scenarios")
