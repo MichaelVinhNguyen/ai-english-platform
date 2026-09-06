@@ -1148,7 +1148,7 @@ window.openIeltsAIInterviewStudio = function(partId, topicTitle) {
 
       <!-- EXAMINER AVATAR & DIALOGUE AREA -->
       <div style="display:flex; gap:16px; margin-bottom:18px; flex-wrap:wrap; align-items:center;">
-        <div style="width:90px; height:90px; border-radius:50%; border:3px solid #06b6d4; background:url('/assets/login_hero_3d.jpg') center/cover; box-shadow:0 0 20px rgba(6,182,212,0.5); flex-shrink:0;"></div>
+        <div style="width:90px; height:90px; border-radius:50%; border:3px solid #06b6d4; background:url('/assets/login_hero_4d.jpg') center/cover; box-shadow:0 0 20px rgba(6,182,212,0.5); flex-shrink:0;"></div>
         <div style="flex:1; min-width:280px; background:rgba(0,0,0,0.5); border:1.5px solid rgba(6,182,212,0.4); border-radius:16px; padding:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <b style="color:#38bdf8; font-size:13.5px;">👩‍🏫 Dr. Sarah Mitchell (Senior IELTS Examiner)</b>

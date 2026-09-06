@@ -136,20 +136,47 @@ const api = {
     if (path.startsWith('/vocabulary/flashcards/deck')) {
       const fcMap = sd.flashcards || {};
       let topic = null;
+      let level = null;
+      let limit = 50;
       if (path.includes('?')) {
         const params = new URLSearchParams(path.split('?')[1]);
         topic = params.get('topic');
+        level = params.get('level');
+        if (params.get('limit')) limit = parseInt(params.get('limit'), 10) || 50;
       }
       let cards = [];
       if (topic && fcMap[topic]) {
-        cards = fcMap[topic];
+        cards = [...fcMap[topic]];
       } else if (topic) {
-        const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === topic.toLowerCase());
-        if (matchKey) cards = fcMap[matchKey];
+        const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === topic.toLowerCase() || k.toLowerCase().includes(topic.toLowerCase()) || topic.toLowerCase().includes(k.toLowerCase()));
+        if (matchKey) cards = [...fcMap[matchKey]];
+      } else if (level) {
+        const pool = (sd.vocabularies || []);
+        cards = pool.filter(w => (w.level || '').toUpperCase() === level.toUpperCase());
+        if (cards.length < limit) {
+          Object.values(fcMap).forEach(arr => {
+            arr.forEach(c => {
+              if ((c.level || '').toUpperCase() === level.toUpperCase() && !cards.some(x => (x.word || '').toLowerCase() === (c.word || '').toLowerCase())) {
+                cards.push(c);
+              }
+            });
+          });
+        }
       }
-      if (!cards.length) {
-        cards = Object.values(fcMap)[0] || [];
+
+      // Guarantee 50 distinct items without duplicates
+      if (cards.length < limit) {
+        const allCards = [];
+        Object.values(fcMap).forEach(arr => allCards.push(...arr));
+        for (const ac of allCards) {
+          if (!cards.some(c => (c.word || '').toLowerCase() === (ac.word || '').toLowerCase())) {
+            cards.push(ac);
+            if (cards.length >= limit) break;
+          }
+        }
       }
+
+      cards = cards.slice(0, limit);
       return { total: cards.length, cards };
     }
     if (path.startsWith('/vocabulary/topics')) {

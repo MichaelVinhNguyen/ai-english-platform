@@ -29,9 +29,9 @@ applyTheme();
 
 const i18n = {
   'dashboard': { en: 'Dashboard', vi: 'Tổng quan' },
-  'levelCurriculum': { en: 'Level Curriculum & Exams', vi: 'Học Theo Cấp Độ & Luyện Đề' },
-  'learningPath': { en: 'Learning Path', vi: 'Lộ trình & Kế hoạch' },
-  'teacher': { en: 'AI Teacher', vi: 'Giáo viên AI' },
+  'levelCurriculum': { en: 'Level Curriculum & Exams', vi: 'Học theo cấp độ & Luyện đề' },
+  'learningPath': { en: 'Learning Path', vi: 'Lộ trình học' },
+  'teacher': { en: 'AI 3D Teacher', vi: 'Giáo viên AI 3D' },
   'vocabulary': { en: 'Vocabulary', vi: 'Từ vựng' },
   'grammar': { en: 'Grammar', vi: 'Ngữ pháp' },
   'listening': { en: 'Listening', vi: 'Luyện nghe' },
@@ -39,13 +39,14 @@ const i18n = {
   'reading': { en: 'Reading', vi: 'Đọc hiểu' },
   'writing': { en: 'Writing', vi: 'Luyện viết' },
   'translation': { en: 'Translation', vi: 'Dịch thuật' },
-  'quiz': { en: 'Exercises', vi: 'Bài tập & Quiz' },
+  'commonPhrases': { en: 'Common Phrases & Dialogues', vi: 'Câu nói thường gặp' },
+  'quiz': { en: 'Exercises & Quizzes', vi: 'Bài tập & Quiz' },
   'flashcards': { en: 'Flashcards', vi: 'Flashcard' },
   'courses': { en: 'Courses', vi: 'Khóa học' },
   'gamification': { en: 'Achievements', vi: 'Thành tích' },
   'community': { en: 'Community', vi: 'Cộng đồng' },
   'profile': { en: 'Profile', vi: 'Hồ sơ' },
-  'admin': { en: 'Admin Panel', vi: 'Quản trị' }
+  'admin': { en: 'Admin Panel & AI Settings', vi: 'CMS Quản trị & Cài đặt AI' }
 };
 
 window.toggleLang = () => {
@@ -55,17 +56,17 @@ window.toggleLang = () => {
 };
 
 function applyLang() {
-  document.getElementById('lang-toggle').textContent = state.lang === 'vi' ? '🌍 EN' : '🌍 VI';
+  const langToggle = document.getElementById('lang-toggle');
+  if (langToggle) langToggle.textContent = state.lang === 'vi' ? '🌍 EN' : '🌍 VI';
   document.querySelectorAll('.nav-item').forEach(el => {
     const view = el.dataset.view;
     if (i18n[view]) {
-      // Find the text node after the span icon and replace it
       const iconSpan = el.querySelector('.nav-icon');
-      if (iconSpan) {
-        el.innerHTML = '';
-        el.appendChild(iconSpan);
-        el.appendChild(document.createTextNode(' ' + i18n[view][state.lang]));
-      }
+      const badgeSpan = el.querySelector('.nav-badge');
+      el.innerHTML = '';
+      if (iconSpan) el.appendChild(iconSpan);
+      el.appendChild(document.createTextNode(' ' + i18n[view][state.lang] + ' '));
+      if (badgeSpan) el.appendChild(badgeSpan);
     }
   });
   const pageTitle = document.getElementById('page-title');
@@ -542,6 +543,24 @@ function updateUserUI() {
 
 // ── LOGIN FORM & QUICK EMAIL LOGIN ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // 4D Hero Stage Interactive 3D Parallax Tilt Effect
+  const authShowcase = document.querySelector('.auth-hero-showcase');
+  const authCard4D = document.querySelector('.auth-4d-card-levitate');
+  if (authShowcase && authCard4D) {
+    authShowcase.addEventListener('mousemove', (e) => {
+      const rect = authShowcase.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotateY = (x / (rect.width / 2)) * 14;
+      const rotateX = -(y / (rect.height / 2)) * 14;
+      authCard4D.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(1)}deg) rotateY(${rotateY.toFixed(1)}deg) translateY(-8px)`;
+    });
+
+    authShowcase.addEventListener('mouseleave', () => {
+      authCard4D.style.transform = '';
+    });
+  }
+
   // 1. Quick Email Login Handler (Passwordless / Instant access)
   const quickEmailForm = document.getElementById('quick-email-form');
   if (quickEmailForm) {
@@ -1736,6 +1755,7 @@ registerView('vocabulary', () => `
           <option value="">Tất cả chủ đề</option>
         </select>
       </div>
+      <div id="vocab-status-banner" style="margin-bottom:14px;font-size:13px;color:var(--text-secondary)"></div>
       <div class="grid grid-auto" id="vocab-grid"></div>
     </div>
 
@@ -2047,7 +2067,7 @@ window.openVocabModal = (w) => {
 };
 
 async function loadVocab() {
-  const search = document.getElementById('vocab-search')?.value;
+  const search = document.getElementById('vocab-search')?.value?.trim();
   const level = document.getElementById('vocab-level')?.value;
   const topic = document.getElementById('vocab-topic')?.value;
   const params = {};
@@ -2058,11 +2078,22 @@ async function loadVocab() {
   try {
     const res = await api.vocabulary.list(params);
     let words = Array.isArray(res) ? res : (res?.items || res?.cards || []);
-    if (!words || !words.length) {
+    if ((!words || !words.length) && !params.letter && !params.search && !params.level && !params.topic) {
       const fcMap = window.STANDALONE_DATA?.flashcards || {};
       const allWords = [];
       Object.values(fcMap).forEach(arr => allWords.push(...arr));
       words = allWords.slice(0, 100);
+    }
+    const banner = document.getElementById('vocab-status-banner');
+    if (banner) {
+      const letterInfo = window.currentVocabLetter ? `bắt đầu bằng chữ cái [${window.currentVocabLetter}]` : 'tất cả chữ cái A-Z';
+      const levelInfo = level ? ` • Trình độ ${level}` : '';
+      const topicInfo = topic ? ` • Chủ đề ${topic}` : '';
+      const searchInfo = search ? ` • Tìm kiếm "${search}"` : '';
+      banner.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-glass);padding:8px 14px;border-radius:10px;border:1px solid var(--border)">
+        <span>📖 Đang hiển thị <strong>${words.length}</strong> từ vựng (${letterInfo}${levelInfo}${topicInfo}${searchInfo})</span>
+        ${window.currentVocabLetter ? `<button class="btn btn-ghost btn-sm" onclick="filterVocabLetter('')" style="padding:2px 8px;font-size:11.5px">✖ Bỏ lọc chữ cái</button>` : ''}
+      </div>`;
     }
     const grid = document.getElementById('vocab-grid');
     if (!grid) return;
@@ -2085,7 +2116,7 @@ async function loadVocab() {
         </div>
       </div>`;
     }).join('') :
-      '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng phù hợp</div>';
+      `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Không tìm thấy từ vựng nào ${window.currentVocabLetter ? 'bắt đầu bằng chữ cái "' + window.currentVocabLetter + '"' : ''} phù hợp với bộ lọc hiện tại.</div>`;
   } catch(e) { console.warn(e); }
 }
 
@@ -3928,123 +3959,186 @@ registerView('flashcards', () => `
       </div>
     </div>
 
-    <!-- PANEL 2: INTERACTIVE STUDY PLAYER (3D FLIP / QUIZ / SPELLING) -->
+    <!-- PANEL 2: INTERACTIVE STUDY PLAYER (4D SMART FLASHCARD) -->
     <div id="flashcards-panel-player" class="module-panel" style="display:none">
       <div class="flashcard-player-hero">
+        
+        <!-- HEADER ROW -->
         <div class="flashcard-deck-header">
           <div style="display:flex;align-items:center;gap:12px">
-            <button class="btn btn-secondary btn-sm" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="border-radius:10px">
-              ← Danh sách chủ đề
+            <button class="btn btn-secondary btn-sm" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="border-radius:10px;font-weight:700">
+              ← Danh Sách Chủ Đề
             </button>
             <div>
-              <div id="player-deck-title" style="font-weight:800;font-size:16px;color:var(--text-primary)">CEFR A2</div>
-              <div id="player-deck-progress-text" style="font-size:12px;color:var(--text-secondary)">Thẻ 1 / 50</div>
+              <div id="player-deck-title" style="font-weight:800;font-size:17px;color:var(--text-primary)">Daily Life & Routines</div>
+              <div id="player-deck-progress-text" style="font-size:12.5px;color:var(--text-secondary);font-weight:600">Thẻ 1 / 50 (2%)</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="badge badge-purple" id="player-study-mode-badge">🎴 Lật Thẻ 3D</span>
-            <button class="btn btn-secondary btn-sm" onclick="toggleShuffleCurrentDeck()" title="Xáo trộn thứ tự thẻ">🔀</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="openDeckWordListModal()" title="Xem toàn bộ 50 từ trong bộ thẻ" style="border-radius:10px;font-weight:700;display:flex;align-items:center;gap:6px">
+              📋 <span>50 Từ Vựng</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleShuffleCurrentDeck()" title="Xáo trộn thứ tự 50 thẻ" style="border-radius:10px;font-weight:700">
+              🔀 Xáo Trộn
+            </button>
+            <span class="badge badge-purple" id="player-study-mode-badge" style="border-radius:10px;padding:6px 12px;font-weight:800">🎴 Lật Thẻ 4D</span>
           </div>
         </div>
 
-        <!-- LANGUAGE FLIP MODE TOGGLE -->
-        <div class="flashcard-lang-toggle-bar">
-          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">🔄 Chiều học:</span>
-          <button id="fc-lang-btn-en-vi" class="fc-lang-btn active" onclick="setFlashcardLangMode('en_to_vi')">🇬🇧 Anh ➔ 🇻🇳 Việt</button>
-          <button id="fc-lang-btn-vi-en" class="fc-lang-btn" onclick="setFlashcardLangMode('vi_to_en')">🇻🇳 Việt ➔ 🇬🇧 Anh</button>
+        <!-- PROGRESS BAR -->
+        <div class="fc-progress-container" style="height:8px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin:14px 0 10px 0;position:relative">
+          <div id="player-top-progress-fill" style="height:100%;width:2%;background:linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);border-radius:10px;transition:width 0.35s cubic-bezier(0.4, 0, 0.2, 1);box-shadow:0 0 12px rgba(139,92,246,0.5)"></div>
         </div>
 
-        <!-- MODE TABS (Flip, Quiz, Spelling) -->
-        <div class="flashcard-mode-tabs">
-          <button id="mode-tab-flip" class="fc-mode-tab active" onclick="setPlayerStudyMode('flip')">🎴 Lật Thẻ 3D Chi Tiết</button>
+        <!-- QUICK 50-CARD JUMP MATRIX / NUMBER STRIP -->
+        <div class="fc-jump-strip-container" id="fc-jump-strip-container">
+          <div class="fc-jump-strip-label">⚡ Chuyển nhanh 50 từ:</div>
+          <div class="fc-jump-strip" id="fc-jump-strip">
+            <!-- Rendered dynamically: 1..50 -->
+          </div>
+        </div>
+
+        <!-- STUDY MODES TABS -->
+        <div class="flashcard-mode-tabs" style="margin-top:14px;margin-bottom:14px">
+          <button id="mode-tab-flip" class="fc-mode-tab active" onclick="setPlayerStudyMode('flip')">🎴 Lật Thẻ 4D Chi Tiết</button>
           <button id="mode-tab-quiz" class="fc-mode-tab" onclick="setPlayerStudyMode('quiz')">🎯 Trắc Nghiệm Nhanh</button>
           <button id="mode-tab-spelling" class="fc-mode-tab" onclick="setPlayerStudyMode('spelling')">✍️ Gõ Từ Chính Tả</button>
         </div>
 
-        <!-- PROGRESS BAR -->
-        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin-bottom:20px">
-          <div id="player-top-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg, #6366f1, #8b5cf6);border-radius:10px;transition:width 0.3s ease"></div>
-        </div>
-
-        <!-- 1. FLIP CARD MODE (GLENN DOMAN 3D CARTOON SMART CARD) -->
+        <!-- 1. FLIP CARD MODE -->
         <div id="player-mode-flip-wrap">
-          <!-- CARD NAVIGATION TOOLBAR -->
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary btn-sm" onclick="prevFlashcard()" style="border-radius:12px;font-weight:700">⬅️ Từ trước</button>
-              <button class="btn btn-primary btn-sm" onclick="nextFlashcard()" style="border-radius:12px;font-weight:700">Từ tiếp theo ➡️</button>
+          
+          <!-- SECONDARY QUICK TOOLS (Audio, Slow, Mic, Star, Auto-Play) -->
+          <div class="fc-quick-tools-row">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="fc-tool-pill" onclick="speakActiveWord(1.0)" title="Phát âm giọng bản xứ chuẩn 1.0x">
+                🔊 Nghe Chuẩn (1.0x)
+              </button>
+              <button class="fc-tool-pill" onclick="speakActiveWordSlow()" title="Phát âm chậm 0.75x để nghe rõ từng âm IPA">
+                🐢 Phát Âm Chậm (0.75x)
+              </button>
+              <button class="fc-tool-pill" onclick="practiceActiveWordSpeech()" title="Luyện đọc qua Micro nhận diện AI">
+                🎙️ Luyện Đọc AI
+              </button>
+              <button id="card-bookmark-btn" class="fc-tool-pill" onclick="toggleBookmarkActiveWord()" title="Lưu từ vào danh sách yêu thích">
+                ⭐ Lưu Từ
+              </button>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-secondary btn-sm" onclick="speakActiveWord()" style="border-radius:12px;font-weight:700">🔊 Phát âm mẫu</button>
-              <button class="btn btn-ghost btn-sm" id="btn-autoplay-flashcard" onclick="toggleAutoPlayFlashcard()" style="border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,0.15)">⚡ Tự động chạy: TẮT</button>
+            <div>
+              <button class="btn btn-ghost btn-sm" id="btn-autoplay-flashcard" onclick="toggleAutoPlayFlashcard()" style="border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,0.18)">
+                ⚡ Tự động chạy: TẮT
+              </button>
             </div>
           </div>
 
-          <div class="flashcard-3d-scene" onclick="flipActiveCard()">
-            <div class="flashcard-3d-card" id="main-3d-flashcard">
-              <!-- FRONT: GLENN DOMAN STYLE (RED VIETNAMESE + ENGLISH + IPA + CUTE 3D CARTOON) -->
-              <div class="flashcard-side front glenn-doman-front" style="background:#ffffff;border:2px solid #e2e8f0;color:#0f172a;text-align:center;display:flex;flex-direction:column;justify-content:space-between;padding:24px;border-radius:24px;box-shadow:0 15px 40px rgba(0,0,0,0.08)">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span class="badge" id="card-level-badge" style="background:#ede9fe;color:#7c3aed;font-weight:800;border-radius:20px;padding:4px 12px">A1</span>
-                  <span class="badge" id="card-type-label" style="background:#cffafe;color:#0891b2;font-weight:800;border-radius:20px;padding:4px 12px">Hành động • Verb</span>
-                </div>
+          <!-- 4D FLASHCARD STAGE WITH FLOATING SIDE ARROWS -->
+          <div class="flashcard-stage-container">
+            <button class="fc-stage-nav fc-stage-prev" onclick="prevFlashcard()" title="Từ trước (Phím Mũi tên Trái ⬅️)">
+              <span>‹</span>
+            </button>
 
-                <!-- MAIN WORD CONTENT -->
-                <div style="margin: 10px 0;">
-                  <div id="player-card-vi-top" style="color:#dc2626;font-size:32px;font-weight:900;letter-spacing:-0.5px;margin-bottom:6px">Đánh răng</div>
-                  <div id="player-card-word" style="color:#0f172a;font-size:28px;font-weight:800;margin-bottom:4px">Brush teeth</div>
-                  <div id="player-card-ipa" style="color:#475569;font-size:18px;font-family:monospace;font-weight:600">[ brʌʃ tiːθ ]</div>
-                </div>
-
-                <!-- 3D CARTOON ILLUSTRATION -->
-                <div class="glenn-cartoon-wrap" style="height:190px;width:100%;display:flex;align-items:center;justify-content:center;margin:8px 0;background:#f8fafc;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0">
-                  <img id="player-card-img-front" src="/assets/login_hero_3d.jpg" alt="3D Cartoon Illustration" style="max-height:175px;max-width:90%;object-fit:contain;transition:transform 0.3s ease" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=learn'">
-                </div>
-
-                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:6px">
-                  <span>👆 Nhấn vào thẻ để lật xem ví dụ & mẹo nhớ</span>
-                  <button class="btn btn-sm btn-ghost" style="color:#7c3aed;font-weight:700;padding:2px 8px" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe lại</button>
-                </div>
-              </div>
-
-              <!-- BACK: DETAILS + BILINGUAL EXAMPLE + MNEMONIC MEMORY HOOK -->
-              <div class="flashcard-side back" style="background:#ffffff;border:2px solid #c4b5fd;color:#0f172a;border-radius:24px;padding:24px;box-shadow:0 15px 40px rgba(124,58,237,0.12)">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                  <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:800;border-radius:20px;padding:4px 12px">📖 Nghĩa & Ví Dụ Ngữ Cảnh</span>
-                  <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe phát âm</button>
-                </div>
-
-                <div>
-                  <div id="player-card-vi" style="font-size:24px;font-weight:800;color:#dc2626;margin-bottom:4px">Đánh răng</div>
-                  <div id="player-card-en" style="font-size:14px;color:#334155;margin-bottom:14px;line-height:1.5">Clean one's teeth using a toothbrush and toothpaste.</div>
-                  
-                  <!-- BILINGUAL EXAMPLE -->
-                  <div class="card-bilingual-example" id="player-card-bilingual-example" style="background:#f1f5f9;border-left:4px solid #8b5cf6;padding:12px 16px;border-radius:10px;margin-bottom:12px">
-                    <div class="card-example-en" id="player-card-ex-en" style="font-size:14.5px;font-weight:700;color:#0f172a">"Remember to brush your teeth before going to bed."</div>
-                    <div class="card-example-vi" id="player-card-ex-vi" style="font-size:13px;color:#475569;margin-top:4px">Hãy nhớ đánh răng trước khi đi ngủ.</div>
+            <div class="flashcard-3d-scene" onclick="flipActiveCard()">
+              <div class="flashcard-3d-card" id="main-3d-flashcard">
+                
+                <!-- FRONT SIDE: 4D GLENN DOMAN HIGH CONTRAST -->
+                <div class="flashcard-side front glenn-doman-front">
+                  <!-- Front Top Badge Row -->
+                  <div class="fc-front-badge-row">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" id="card-level-badge" style="background:#ede9fe;color:#7c3aed;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">A1</span>
+                      <span class="badge" id="card-type-label" style="background:#cffafe;color:#0891b2;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">Noun • Daily Life</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span id="card-idx-badge" class="badge" style="background:#f1f5f9;color:#475569;font-weight:800;border-radius:20px;padding:4px 10px;font-size:11px">1/50</span>
+                    </div>
                   </div>
 
-                  <!-- MNEMONIC TIP -->
-                  <div class="card-mnemonic-box" id="player-card-mnemonic-box" style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px">
-                    💡 <strong>Mẹo nhớ từ:</strong> <em>"Brush"</em> là bàn chải / chải, <em>"Teeth"</em> là những chiếc răng ➔ chải răng = đánh răng!
+                  <!-- Front Word Content -->
+                  <div class="fc-front-word-center">
+                    <div id="player-card-vi-top" class="fc-front-vi-title">Đánh răng</div>
+                    <div id="player-card-word" class="fc-front-en-word">Brush teeth</div>
+                    <div class="fc-front-ipa-wrap">
+                      <span id="player-card-ipa" class="fc-front-ipa-text">[ brʌʃ tiːθ ]</span>
+                      <button class="fc-mini-audio-btn" onclick="event.stopPropagation();speakActiveWord()" title="Nghe phát âm">🔊</button>
+                    </div>
                   </div>
 
-                  <!-- COLLOCATIONS & SYNONYMS -->
-                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <span style="font-size:11.5px;color:#64748b;font-weight:700">Cụm từ liên quan:</span>
-                    <div id="player-card-collocations" class="card-tags-list"></div>
+                  <!-- 4D / 3D Illustration Container -->
+                  <div class="glenn-cartoon-wrap">
+                    <img id="player-card-img-front" src="/assets/login_hero_4d.jpg" alt="Illustration" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=learn'">
+                    <div class="glenn-cartoon-glass-overlay"></div>
+                  </div>
+
+                  <!-- Front Footer Hint -->
+                  <div class="fc-front-footer-hint">
+                    <span class="fc-flip-hint-pill">🔄 Nhấn vào thẻ hoặc phím [Space] để lật xem ví dụ & mẹo</span>
                   </div>
                 </div>
 
-                <div style="font-size:11.5px;color:#64748b;text-align:center;margin-top:10px">
-                  🔄 Bấm vào thẻ để quay lại mặt trước
+                <!-- BACK SIDE: DETAILS, DEFINITIONS, BILINGUAL EXAMPLES, MNEMONIC -->
+                <div class="flashcard-side back">
+                  <div class="fc-back-header-row">
+                    <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">📖 Nghĩa & Ví Dụ Ngữ Cảnh</span>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWord(1.0)">🔊 1.0x</button>
+                      <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWordSlow()">🐢 0.8x</button>
+                    </div>
+                  </div>
+
+                  <div class="fc-back-content-scroll">
+                    <div id="player-card-vi" class="fc-back-vi-title">Đánh răng</div>
+                    <div id="player-card-en" class="fc-back-en-def">Clean one's teeth using a toothbrush and toothpaste.</div>
+                    
+                    <!-- BILINGUAL EXAMPLE -->
+                    <div class="card-bilingual-example" id="player-card-bilingual-example">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <span style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase">Ví dụ thực tế:</span>
+                        <button class="fc-mini-audio-btn" onclick="event.stopPropagation();speakExampleSentence()" title="Nghe câu ví dụ">🔊</button>
+                      </div>
+                      <div class="card-example-en" id="player-card-ex-en">"Remember to brush your teeth before going to bed."</div>
+                      <div class="card-example-vi" id="player-card-ex-vi">Hãy nhớ đánh răng trước khi đi ngủ.</div>
+                    </div>
+
+                    <!-- MNEMONIC TIP -->
+                    <div class="card-mnemonic-box" id="player-card-mnemonic-box">
+                      💡 <strong>Mẹo nhớ từ:</strong> <em>"Brush"</em> là bàn chải, <em>"Teeth"</em> là răng ➔ chải răng = đánh răng!
+                    </div>
+
+                    <!-- COLLOCATIONS -->
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+                      <span style="font-size:11.5px;color:#64748b;font-weight:700">Cụm từ liên quan:</span>
+                      <div id="player-card-collocations" class="card-tags-list"></div>
+                    </div>
+                  </div>
+
+                  <div class="fc-back-footer-hint">
+                    🔄 Nhấn vào thẻ để quay lại mặt trước
+                  </div>
                 </div>
+
               </div>
             </div>
+
+            <button class="fc-stage-nav fc-stage-next" onclick="nextFlashcard()" title="Từ tiếp theo (Phím Mũi tên Phải ➡️)">
+              <span>›</span>
+            </button>
+          </div>
+
+          <!-- PRIMARY HERO CONTROL BUTTONS BAR -->
+          <div class="flashcard-main-controls-bar">
+            <button class="btn btn-secondary fc-btn-prev" onclick="prevFlashcard()" title="Quay lại từ trước (Phím ⬅️)">
+              ⬅️ Từ trước [ ⬅️ ]
+            </button>
+            <button class="btn btn-secondary fc-btn-flip" onclick="flipActiveCard()" title="Lật thẻ qua lại (Phím Cách / Space)">
+              🔄 Lật thẻ [ Space ]
+            </button>
+            <button class="btn btn-primary fc-btn-next" onclick="nextFlashcard()" title="Chuyển sang từ tiếp theo (Phím ➡️)">
+              Từ tiếp theo ➡️ [ ➡️ ]
+            </button>
           </div>
 
           <!-- SRS 4 BUTTONS -->
-          <div id="srs-actions-panel" style="display:block;margin-top:16px">
+          <div id="srs-actions-panel" style="display:block;margin-top:20px">
             <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:10px">
               Đánh giá mức độ ghi nhớ (Thuật toán SuperMemo SM-2):
             </div>
@@ -4067,6 +4161,7 @@ registerView('flashcards', () => `
               </button>
             </div>
           </div>
+
         </div>
 
         <!-- 2. QUIZ MODE -->
@@ -4097,18 +4192,21 @@ registerView('flashcards', () => `
         </div>
 
         <!-- FINISHED CELEBRATION VIEW -->
-        <div id="player-deck-finished" class="card" style="display:none;text-align:center;padding:40px">
-          <div style="font-size:54px;margin-bottom:12px">🎉</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:8px">Tuyệt vời! Bạn đã hoàn thành bộ thẻ</div>
-          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px">Tất cả các từ đã được ghi nhận vào lịch ôn tập ngắt quãng (SM-2).</p>
-          <div style="display:flex;gap:12px;justify-content:center">
-            <button class="btn btn-primary" onclick="restartCurrentDeck()">🔄 Học lại bộ này</button>
-            <button class="btn btn-secondary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))">🏷️ Chọn chủ đề khác</button>
+        <div id="player-deck-finished" class="card" style="display:none;text-align:center;padding:44px 24px;background:linear-gradient(145deg, rgba(22,27,34,0.95), rgba(13,17,23,0.98));border:2px solid rgba(139,92,246,0.3);box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+          <div style="font-size:64px;margin-bottom:12px;animation:pulse 2s infinite">🎉</div>
+          <div style="font-size:26px;font-weight:900;color:var(--text-primary);margin-bottom:8px">Xuất Sắc! Hoàn Thành Trọn Bộ 50 Từ!</div>
+          <p style="color:var(--text-secondary);font-size:15px;margin-bottom:24px;max-width:520px;margin-left:auto;margin-right:auto">
+            Bạn vừa hoàn thành toàn bộ 50 từ vựng chuyên sâu của chủ đề này và nhận được <strong>+50 XP</strong>. Toàn bộ từ vựng đã được lên lịch ôn tập thông minh (SM-2).
+          </p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="restartCurrentDeck()" style="font-weight:800;border-radius:12px;padding:12px 24px">🔄 Học Lại Bộ 50 Từ Này</button>
+            <button class="btn btn-secondary" onclick="setPlayerStudyMode('quiz')" style="font-weight:800;border-radius:12px;padding:12px 24px">🎯 Thử Thách Trắc Nghiệm 50 Từ</button>
+            <button class="btn btn-secondary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="font-weight:800;border-radius:12px;padding:12px 24px">🏷️ Chọn Chủ Đề Khác</button>
           </div>
         </div>
+
       </div>
     </div>
-
     <!-- PANEL 3: SRS DUE REVIEWS -->
     <div id="flashcards-panel-due" class="module-panel" style="display:none">
       <div class="card" style="max-width:600px;margin:0 auto;text-align:center;padding:32px">
@@ -4472,29 +4570,53 @@ window.selectAndStartTopic = async (topicId, queryType, queryValue, displayTitle
   }
 };
 
+let flashcardAutoPlayTimer = null;
+let isFlashcardAutoPlaying = false;
+
 window.startTopicStudy = async (topicName, displayTitle) => {
   try {
     const title = displayTitle || topicName;
-    toast(`Đang tải từ vựng: ${title}...`, 'info');
+    toast(`Đang tải 50 từ vựng: ${title}...`, 'info');
     const res = await api.vocabulary.flashcardDeck({ topic: topicName, limit: 50, shuffle: false });
-    if (!res.cards || !res.cards.length) {
-      toast('Đang nạp từ vựng dự phòng theo chủ đề...', 'info');
-      const fallbackRes = await api.vocabulary.flashcardDeck({ limit: 50, shuffle: true });
-      if (!fallbackRes.cards || !fallbackRes.cards.length) {
-        toast('Không tìm thấy thẻ nào cho chủ đề này.', 'warning');
-        return;
+    let cards = (res && res.cards) ? res.cards : [];
+
+    // Deduplicate cards by lowercase word
+    const seen = new Set();
+    const uniqueCards = [];
+    for (const c of cards) {
+      const w = (c.word || '').trim().toLowerCase();
+      if (w && !seen.has(w)) {
+        seen.add(w);
+        uniqueCards.push(c);
       }
-      res.cards = fallbackRes.cards;
     }
-    state.currentFlashcardDeck = res.cards;
+
+    // Guarantee 50 distinct items from fallback or vocabulary pool if needed
+    if (uniqueCards.length < 50) {
+      const fcMap = window.STANDALONE_DATA?.flashcards || {};
+      const allTopicCards = [];
+      Object.values(fcMap).forEach(arr => allTopicCards.push(...arr));
+      const pool = [...(window.STANDALONE_DATA?.vocabularies || []), ...allTopicCards];
+      for (const item of pool) {
+        const w = (item.word || '').trim().toLowerCase();
+        if (w && !seen.has(w)) {
+          seen.add(w);
+          uniqueCards.push(item);
+          if (uniqueCards.length >= 50) break;
+        }
+      }
+    }
+
+    state.currentFlashcardDeck = uniqueCards.slice(0, 50);
     state.currentDeckTitle = title;
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
-    // Switch to player tab
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = title;
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = title;
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(`Lỗi tải bộ thẻ: ${e.message}`, 'error');
@@ -4503,21 +4625,45 @@ window.startTopicStudy = async (topicName, displayTitle) => {
 
 window.loadCefrDeck = async (level, displayTitle) => {
   try {
-    const title = displayTitle || `CEFR Level ${level}`;
-    toast(`Đang tải từ vựng khung chuẩn ${title}...`, 'info');
+    const title = displayTitle || `Khung Chuẩn CEFR ${level}`;
+    toast(`Đang tải 50 từ vựng ${title}...`, 'info');
     const res = await api.vocabulary.flashcardDeck({ level, limit: 50, shuffle: true });
-    if (!res.cards || !res.cards.length) {
-      toast('Không có từ vựng cho cấp độ này.', 'warning');
-      return;
+    let cards = (res && res.cards) ? res.cards : [];
+
+    const seen = new Set();
+    const uniqueCards = [];
+    for (const c of cards) {
+      const w = (c.word || '').trim().toLowerCase();
+      if (w && !seen.has(w)) {
+        seen.add(w);
+        uniqueCards.push(c);
+      }
     }
-    state.currentFlashcardDeck = res.cards;
+
+    if (uniqueCards.length < 50) {
+      const pool = (window.STANDALONE_DATA?.vocabularies || []).filter(v => (v.level || '').toUpperCase() === level.toUpperCase());
+      const fcMap = window.STANDALONE_DATA?.flashcards || {};
+      Object.values(fcMap).forEach(arr => pool.push(...arr));
+      for (const item of pool) {
+        const w = (item.word || '').trim().toLowerCase();
+        if (w && !seen.has(w)) {
+          seen.add(w);
+          uniqueCards.push(item);
+          if (uniqueCards.length >= 50) break;
+        }
+      }
+    }
+
+    state.currentFlashcardDeck = uniqueCards.slice(0, 50);
     state.currentDeckTitle = title;
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = title;
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = title;
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(e.message, 'error');
@@ -4531,23 +4677,21 @@ window.loadDueFlashcardsDeck = async () => {
       toast('Tuyệt vời! Bạn đã hoàn thành tất cả thẻ cần ôn hôm nay.', 'success');
       return;
     }
-    state.currentFlashcardDeck = cards;
+    state.currentFlashcardDeck = cards.slice(0, 50);
     state.currentDeckTitle = "SRS Due Reviews (Cần ôn hôm nay)";
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = "Hôm nay cần ôn tập (SRS)";
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = "Hôm nay cần ôn tập (SRS)";
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(e.message, 'error');
   }
 };
-
-
-let flashcardAutoPlayTimer = null;
-let isFlashcardAutoPlaying = false;
 
 window.renderActiveFlashcard = () => {
   const deck = state.currentFlashcardDeck || [];
@@ -4572,7 +4716,7 @@ window.renderActiveFlashcard = () => {
     return;
   }
 
-  // Check if finished
+  // Check if finished entire deck
   if (state.flashcardIndex >= deck.length) {
     if (isFlashcardAutoPlaying) toggleAutoPlayFlashcard();
     if (finishedElem) finishedElem.style.display = 'block';
@@ -4591,13 +4735,39 @@ window.renderActiveFlashcard = () => {
   const card = deck[state.flashcardIndex];
   const total = deck.length;
   const currentNum = state.flashcardIndex + 1;
+  const percent = Math.round((currentNum / total) * 100);
 
-  // Update Progress
+  // Update Progress text & fill
   const progressText = document.getElementById('player-deck-progress-text');
-  if (progressText) progressText.textContent = `Từ ${currentNum} / ${total}`;
+  if (progressText) progressText.textContent = `Thẻ ${currentNum} / ${total} (${percent}%)`;
 
   const progressFill = document.getElementById('player-top-progress-fill');
-  if (progressFill) progressFill.style.width = `${(currentNum / total) * 100}%`;
+  if (progressFill) progressFill.style.width = `${percent}%`;
+
+  // Render 50-card jump strip
+  const jumpStrip = document.getElementById('fc-jump-strip');
+  if (jumpStrip) {
+    jumpStrip.innerHTML = deck.map((c, i) => {
+      const isActive = i === state.flashcardIndex;
+      const isDone = i < state.flashcardIndex;
+      return `<button class="fc-jump-chip ${isActive ? 'active' : (isDone ? 'done' : '')}" onclick="jumpToFlashcard(${i})" title="${i + 1}. ${c.word} (${c.definition_vi || ''})">${i + 1}</button>`;
+    }).join('');
+
+    // Smooth scroll active chip into view
+    const activeChip = jumpStrip.querySelector('.fc-jump-chip.active');
+    if (activeChip && activeChip.scrollIntoView) {
+      activeChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }
+
+  // Bookmark star state
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarked_flashcards') || '[]');
+  const isBookmarked = bookmarks.some(b => (b.word || '').toLowerCase() === (card.word || '').toLowerCase());
+  const bookmarkBtn = document.getElementById('card-bookmark-btn');
+  if (bookmarkBtn) {
+    bookmarkBtn.classList.toggle('active', isBookmarked);
+    bookmarkBtn.innerHTML = isBookmarked ? '⭐ Đã Lưu' : '☆ Lưu Từ';
+  }
 
   const studyMode = state.flashcardStudyMode || 'flip';
 
@@ -4606,41 +4776,47 @@ window.renderActiveFlashcard = () => {
     if (quizWrap) quizWrap.style.display = 'none';
     if (spellingWrap) spellingWrap.style.display = 'none';
 
-    // Set Level and Type Badges
+    // Badges
     const lvlBadge = document.getElementById('card-level-badge');
     if (lvlBadge) lvlBadge.textContent = card.level || 'A1';
 
     const typeBadge = document.getElementById('card-type-label');
     if (typeBadge) typeBadge.textContent = `${card.word_type || 'noun'} • ${card.topic || 'Từ vựng'}`;
 
-    // Set Vietnamese Meaning in Red (Top)
+    const idxBadge = document.getElementById('card-idx-badge');
+    if (idxBadge) idxBadge.textContent = `${currentNum} / ${total}`;
+
+    // Front Content
     const viTop = document.getElementById('player-card-vi-top');
     if (viTop) viTop.textContent = card.definition_vi || 'Nghĩa tiếng Việt';
 
-    // Set English Word (Middle)
     const enWord = document.getElementById('player-card-word');
     if (enWord) enWord.textContent = card.word || '';
 
-    // Set Phonetic IPA
     const ipaElem = document.getElementById('player-card-ipa');
     if (ipaElem) ipaElem.textContent = card.ipa ? `[ ${card.ipa} ]` : `[ /${card.word}/ ]`;
 
-    // 3D / Cartoon Illustration
+    // 4D Illustration
     const imgFront = document.getElementById('player-card-img-front');
     if (imgFront) {
-      const cartoonSeed = encodeURIComponent(card.word || 'english');
-      const fallbackUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${cartoonSeed}`;
-      imgFront.src = card.image_url || fallbackUrl;
+      if (card.image_url) {
+        imgFront.src = card.image_url;
+      } else if (TOPIC_IMAGE_MAP && TOPIC_IMAGE_MAP[card.topic]) {
+        imgFront.src = TOPIC_IMAGE_MAP[card.topic];
+      } else {
+        const seed = encodeURIComponent(card.word || 'learn');
+        imgFront.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
+      }
     }
 
-    // Set Back face details
+    // Back Face Content
     const viBack = document.getElementById('player-card-vi');
     if (viBack) viBack.textContent = card.definition_vi || '';
 
     const enBack = document.getElementById('player-card-en');
     if (enBack) enBack.textContent = card.definition_en || 'English definition...';
 
-    // Contextual Bilingual Example
+    // Bilingual Example
     const exEn = document.getElementById('player-card-ex-en');
     const exVi = document.getElementById('player-card-ex-vi');
     let exampleEnText = `"${card.word} is very important for daily English communication."`;
@@ -4663,13 +4839,13 @@ window.renderActiveFlashcard = () => {
     if (exEn) exEn.textContent = exampleEnText;
     if (exVi) exVi.textContent = exampleViText;
 
-    // Mnemonic memory tip
+    // Mnemonic Memory Box
     const mnemonicBox = document.getElementById('player-card-mnemonic-box');
     if (mnemonicBox) {
       mnemonicBox.innerHTML = `💡 <strong>Mẹo nhớ từ:</strong> Hãy liên tưởng từ <em>"${card.word}"</em> (${card.definition_vi || ''}) với hình ảnh minh họa để khắc sâu vào trí nhớ dài hạn.`;
     }
 
-    // Collocations and synonyms tags
+    // Collocations
     const collocElem = document.getElementById('player-card-collocations');
     if (collocElem) {
       const tags = [];
@@ -4730,6 +4906,11 @@ window.flipActiveCard = () => {
 window.nextFlashcard = () => {
   const deck = state.currentFlashcardDeck || [];
   if (!deck.length) return;
+
+  // Unflip card immediately so next word is displayed from the front
+  const cardElem = document.getElementById('main-3d-flashcard');
+  if (cardElem) cardElem.classList.remove('flipped');
+
   if (state.flashcardIndex < deck.length - 1) {
     state.flashcardIndex++;
     renderActiveFlashcard();
@@ -4737,15 +4918,174 @@ window.nextFlashcard = () => {
   } else {
     state.flashcardIndex = deck.length;
     renderActiveFlashcard();
+    if (typeof window.showXPPopup === 'function') window.showXPPopup(50);
+    toast('🎉 Tuyệt vời! Bạn đã hoàn thành toàn bộ 50 từ trong bộ thẻ! (+50 XP)', 'success');
   }
 };
 
 window.prevFlashcard = () => {
+  const deck = state.currentFlashcardDeck || [];
+  if (!deck.length) return;
+
+  const cardElem = document.getElementById('main-3d-flashcard');
+  if (cardElem) cardElem.classList.remove('flipped');
+
   if (state.flashcardIndex > 0) {
     state.flashcardIndex--;
     renderActiveFlashcard();
     speakActiveWord();
+  } else {
+    toast('Đây là từ đầu tiên trong bộ 50 từ!', 'info');
   }
+};
+
+window.jumpToFlashcard = (idx) => {
+  const deck = state.currentFlashcardDeck || [];
+  if (idx >= 0 && idx < deck.length) {
+    const cardElem = document.getElementById('main-3d-flashcard');
+    if (cardElem) cardElem.classList.remove('flipped');
+    state.flashcardIndex = idx;
+    closeDeckWordListModal();
+    renderActiveFlashcard();
+    speakActiveWord();
+  }
+};
+
+window.speakActiveWord = (rate = 0.9) => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card || !card.word) return;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(card.word);
+    utterance.lang = 'en-US';
+    utterance.rate = rate;
+    window.speechSynthesis.speak(utterance);
+  } else if (typeof window.speakText === 'function') {
+    window.speakText(card.word);
+  }
+};
+
+window.speakActiveWordSlow = () => {
+  window.speakActiveWord(0.72);
+};
+
+window.speakExampleSentence = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card) return;
+  let text = document.getElementById('player-card-ex-en')?.textContent || '';
+  text = text.replace(/["']/g, '').trim();
+  if (text && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
+window.practiceActiveWordSpeech = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card || !card.word) return;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    toast('Trình duyệt của bạn chưa hỗ trợ Web Speech API. Hãy sử dụng Chrome hoặc Edge để luyện đọc!', 'warning');
+    return;
+  }
+  const rec = new SpeechRec();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  toast(`🎙️ Đang lắng nghe... Hãy phát âm từ: "${card.word}"`, 'info');
+  rec.onresult = (e) => {
+    const transcript = (e.results[0][0].transcript || '').trim().toLowerCase();
+    const target = (card.word || '').trim().toLowerCase();
+    if (transcript.includes(target) || target.includes(transcript)) {
+      toast(`🎉 Xuất sắc! Phát âm rất chuẩn: "${card.word}" (Độ chính xác 100%)`, 'success');
+      if (typeof window.showXPPopup === 'function') window.showXPPopup(10);
+    } else {
+      toast(`AI đã nghe: "${transcript}". Hãy thử lại phát âm: "${card.word}" nhé!`, 'info');
+    }
+  };
+  rec.onerror = () => {
+    toast('Chưa nhận diện được giọng nói, vui lòng thử lại!', 'warning');
+  };
+  rec.start();
+};
+
+window.toggleBookmarkActiveWord = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card) return;
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarked_flashcards') || '[]');
+  const idx = bookmarks.findIndex(b => (b.word || '').toLowerCase() === (card.word || '').toLowerCase());
+  const bookmarkBtn = document.getElementById('card-bookmark-btn');
+  if (idx >= 0) {
+    bookmarks.splice(idx, 1);
+    toast(`Đã bỏ lưu từ "${card.word}" khỏi yêu thích.`, 'info');
+    if (bookmarkBtn) {
+      bookmarkBtn.classList.remove('active');
+      bookmarkBtn.innerHTML = '☆ Lưu Từ';
+    }
+  } else {
+    bookmarks.push(card);
+    toast(`⭐ Đã lưu từ "${card.word}" vào kho từ yêu thích!`, 'success');
+    if (bookmarkBtn) {
+      bookmarkBtn.classList.add('active');
+      bookmarkBtn.innerHTML = '⭐ Đã Lưu';
+    }
+  }
+  localStorage.setItem('bookmarked_flashcards', JSON.stringify(bookmarks));
+};
+
+window.openDeckWordListModal = () => {
+  const deck = state.currentFlashcardDeck || [];
+  if (!deck.length) return;
+  let modal = document.getElementById('modal-deck-words-list');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-deck-words-list';
+    modal.className = 'fc-modal-overlay';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="fc-modal-dialog">
+      <div class="fc-modal-header">
+        <div>
+          <div style="font-size:18px;font-weight:900;color:var(--text-primary)">📋 Trọn Bộ ${deck.length} Từ Vựng: ${state.currentDeckTitle || 'Chủ Đề'}</div>
+          <div style="font-size:12.5px;color:var(--text-secondary)">Bấm vào từ bất kỳ để nhảy ngay tới thẻ đó trong bộ 50 từ</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="closeDeckWordListModal()" style="font-size:18px;font-weight:800;border-radius:50%;width:36px;height:36px">✕</button>
+      </div>
+      <div class="fc-modal-body">
+        <div class="fc-deck-words-grid">
+          ${deck.map((c, i) => {
+            const isCurrent = i === state.flashcardIndex;
+            return `
+              <div class="fc-deck-word-row ${isCurrent ? 'active' : ''}" onclick="jumpToFlashcard(${i})">
+                <div class="fc-deck-word-num">${i + 1}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:800;font-size:14.5px;color:${isCurrent ? '#8b5cf6' : 'var(--text-primary)'}">
+                    ${c.word} <span style="font-size:12px;font-family:monospace;color:#38bdf8;font-weight:400">${c.ipa ? `[${c.ipa}]` : ''}</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${c.definition_vi || ''}
+                  </div>
+                </div>
+                <button class="fc-mini-audio-btn" onclick="event.stopPropagation();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance('${c.word}');u.lang='en-US';speechSynthesis.speak(u);}" title="Nghe phát âm">🔊</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <div class="fc-modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeDeckWordListModal()" style="border-radius:10px;font-weight:700">Đóng</button>
+      </div>
+    </div>
+  `;
+};
+
+window.closeDeckWordListModal = () => {
+  const modal = document.getElementById('modal-deck-words-list');
+  if (modal) modal.style.display = 'none';
 };
 
 window.toggleAutoPlayFlashcard = () => {
@@ -4756,7 +5096,7 @@ window.toggleAutoPlayFlashcard = () => {
     if (btn) {
       btn.textContent = '⚡ Tự động chạy: TẮT';
       btn.style.color = '';
-      btn.style.borderColor = 'rgba(255,255,255,0.15)';
+      btn.style.borderColor = 'rgba(255,255,255,0.18)';
     }
     toast('Đã dừng tự động chạy thẻ.', 'info');
   } else {
@@ -4781,19 +5121,6 @@ window.toggleAutoPlayFlashcard = () => {
   }
 };
 
-window.speakActiveWord = () => {
-  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
-  if (!card || !card.word) return;
-  if (typeof window.speakText === 'function') {
-    window.speakText(card.word);
-  } else if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(card.word);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  }
-};
-
 window.setFlashcardLangMode = (mode) => {
   state.flashcardLangMode = mode;
   document.getElementById('fc-lang-btn-en-vi')?.classList.toggle('active', mode === 'en_to_vi');
@@ -4806,10 +5133,10 @@ window.setPlayerStudyMode = (mode) => {
   document.getElementById('mode-tab-flip')?.classList.toggle('active', mode === 'flip');
   document.getElementById('mode-tab-quiz')?.classList.toggle('active', mode === 'quiz');
   document.getElementById('mode-tab-spelling')?.classList.toggle('active', mode === 'spelling');
-  
+
   const badge = document.getElementById('player-study-mode-badge');
   if (badge) {
-    badge.textContent = mode === 'flip' ? '🎴 Lật Thẻ 3D' : (mode === 'quiz' ? '🎯 Trắc Nghiệm' : '✍️ Gõ Chính Tả');
+    badge.textContent = mode === 'flip' ? '🎴 Lật Thẻ 4D' : (mode === 'quiz' ? '🎯 Trắc Nghiệm' : '✍️ Gõ Chính Tả');
   }
   renderActiveFlashcard();
 };
@@ -4829,8 +5156,7 @@ window.submitFlashcardSRS = async (rating) => {
   } catch(e) {}
 
   state.flashcardReviewed++;
-  state.flashcardIndex++;
-  renderActiveFlashcard();
+  nextFlashcard();
 };
 
 window.handleQuizAnswer = (btnElem, isCorrect) => {
@@ -4845,8 +5171,7 @@ window.handleQuizAnswer = (btnElem, isCorrect) => {
   }
 
   setTimeout(() => {
-    state.flashcardIndex++;
-    renderActiveFlashcard();
+    nextFlashcard();
   }, 1200);
 };
 
@@ -4863,8 +5188,7 @@ window.checkSpellingAnswer = () => {
     feedbackElem.innerHTML = `<span style="color:#34d399">🎉 Chính xác tuyệt đối: <strong>${card.word}</strong> (+5 XP)</span>`;
     if (typeof window.showXPPopup === 'function') window.showXPPopup(5);
     setTimeout(() => {
-      state.flashcardIndex++;
-      renderActiveFlashcard();
+      nextFlashcard();
     }, 1200);
   } else {
     feedbackElem.innerHTML = `
@@ -4872,8 +5196,7 @@ window.checkSpellingAnswer = () => {
     `;
     speakActiveWord();
     setTimeout(() => {
-      state.flashcardIndex++;
-      renderActiveFlashcard();
+      nextFlashcard();
     }, 2200);
   }
 };
@@ -4882,7 +5205,7 @@ window.toggleShuffleCurrentDeck = () => {
   if (!state.currentFlashcardDeck || !state.currentFlashcardDeck.length) return;
   state.currentFlashcardDeck.sort(() => 0.5 - Math.random());
   state.flashcardIndex = 0;
-  toast('Đã xáo trộn thứ tự thẻ!', 'info');
+  toast('Đã xáo trộn thứ tự 50 thẻ!', 'info');
   renderActiveFlashcard();
 };
 
@@ -4891,6 +5214,39 @@ window.restartCurrentDeck = () => {
   document.getElementById('player-deck-finished').style.display = 'none';
   renderActiveFlashcard();
 };
+
+// Global Keyboard Navigation Listener for Flashcards
+if (!window._flashcardsKeydownBound) {
+  window._flashcardsKeydownBound = true;
+  window.addEventListener('keydown', (e) => {
+    const playerPanel = document.getElementById('flashcards-panel-player');
+    if (!playerPanel || playerPanel.style.display === 'none') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      window.nextFlashcard();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      window.prevFlashcard();
+    } else if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      window.flipActiveCard();
+    } else if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      window.speakActiveWord();
+    } else if (e.key === '1') {
+      window.submitFlashcardSRS(0);
+    } else if (e.key === '2') {
+      window.submitFlashcardSRS(2);
+    } else if (e.key === '3') {
+      window.submitFlashcardSRS(3);
+    } else if (e.key === '4') {
+      window.submitFlashcardSRS(5);
+    }
+  });
+}
+
 
 window.loadFlashcardStats = async () => {
   try {
@@ -5482,8 +5838,8 @@ registerView('speaking', () => `
     <div id="speaking-panel-daily" class="module-panel" style="display:none">
       <div id="speaking-topics">
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center">
-          <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Lọc theo CEFR:</span>
-          ${['A1','A2','B1','B2','C1','C2'].map((l,idx)=>`<button class="btn btn-sm ${idx===2?'btn-primary':'btn-ghost'} speaking-level-btn" onclick="filterSpeakingLevel('${l}')">${l}</button>`).join('')}
+          <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Lọc theo cấp độ & kỳ thi:</span>
+          ${['A1','A2','B1','B2','C1','C2','TOEIC','IELTS'].map((l,idx)=>`<button class="btn btn-sm ${idx===2?'btn-primary':'btn-ghost'} speaking-level-btn" onclick="filterSpeakingLevel('${l}')">${l}</button>`).join('')}
         </div>
         <div class="grid grid-2" id="topics-grid">
           <div class="loading-dots" style="grid-column:1/-1;justify-content:center"><span></span><span></span><span></span></div>
@@ -7033,18 +7389,18 @@ function renderListeningExercises(level) {
   const grid = document.getElementById('listening-exercises-grid');
   if (!grid) return;
   const filtered = level ? allListeningExercises.filter(e => e.level === level) : allListeningExercises;
+  grid.className = 'curated-topic-showcase-grid';
   grid.innerHTML = filtered.length ? filtered.map((e, idx) => {
     return `
-      <div class="card" onclick="openListeningExerciseByIndex(${idx}, '${level || ''}')" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-          <span class="badge badge-purple">${e.level||'?'}</span>
-          <span class="badge badge-cyan">${e.exercise_type||''}</span>
+      <div class="curated-topic-showcase-card" onclick="openListeningExerciseByIndex(${idx}, '${level || ''}')">
+        <div class="topic-card-top-row">
+          <span class="topic-pill-level">${e.level || 'B1'}</span>
+          <span class="topic-pill-tag">${e.exercise_type || 'listening'}</span>
         </div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text-primary)">${e.title}</div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">${e.description||''}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted)">
-          <span>⏱️ 2-3 phút</span>
-          <span style="color:var(--accent-primary);font-weight:600">🎧 Nghe & Luyện →</span>
+        <div class="topic-card-title">${e.title}</div>
+        <div class="topic-card-desc">${e.description || 'Luyện kỹ năng nghe hiểu, phân tích hội thoại và làm bài tập trắc nghiệm tương tác.'}</div>
+        <div class="topic-card-action">
+          🎧 Nhấn để nghe bài & làm bài tập →
         </div>
       </div>`;
   }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)">Chưa có bài nghe nào ở cấp độ này</div>';
@@ -11989,3 +12345,1348 @@ window.backToQuizCategories = function() {
   }
 };
 
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MODULE: CÂU NÓI THƯỜNG GẶP (COMMON PHRASES & SITUATIONAL DIALOGUES - 50 TOPICS)
+// 2,500 Bilingual Q&A Pairs • AI Speech Audio • Cartoon Avatars • 4 Interactive Modes
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const cpState = {
+  topics: [],
+  activeCategory: 'ALL',
+  searchQuery: '',
+  selectedTopic: null,
+  topicPhrases: [],
+  filteredPhrases: [],
+  activeTab: 'dialogue', // 'dialogue' | 'flashcards' | 'reflex' | 'bookmarks'
+  currentCardIdx: 0,
+  cardFlipped: false,
+  bookmarks: JSON.parse(localStorage.getItem('vihtech_phrase_bookmarks') || '[]'),
+  reflex: {
+    questions: [],
+    currentIdx: 0,
+    score: 0,
+    streak: 0,
+    selectedOption: null,
+    answered: false
+  },
+  micActive: false,
+  micPhraseId: null,
+  micScore: null,
+  micSpeaker: null
+};
+
+// ── REGISTER VIEW ─────────────────────────────────────────────────────────────
+registerView('commonPhrases', () => `
+  <div class="common-phrases-wrapper" style="padding: 10px 0 40px;">
+    <div id="cp-view-container">
+      <div style="display:flex;align-items:center;justify-content:center;height:240px">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+`, async () => {
+  await initCommonPhrasesView();
+});
+
+async function initCommonPhrasesView() {
+  const container = document.getElementById('cp-view-container');
+  if (!container) return;
+
+  try {
+    // 1. Fetch Topics
+    let res = null;
+    if (api && api.commonPhrases) {
+      res = await api.commonPhrases.getTopics();
+    }
+    if (res && res.topics && res.topics.length) {
+      cpState.topics = res.topics;
+    } else if (window.STANDALONE_DATA && window.STANDALONE_DATA.common_phrases_topics) {
+      cpState.topics = window.STANDALONE_DATA.common_phrases_topics;
+    }
+
+    // Default to main showcase
+    renderCPShowcase();
+  } catch (err) {
+    console.error('Error loading common phrases:', err);
+    if (window.STANDALONE_DATA && window.STANDALONE_DATA.common_phrases_topics) {
+      cpState.topics = window.STANDALONE_DATA.common_phrases_topics;
+      renderCPShowcase();
+    } else {
+      container.innerHTML = `
+        <div class="card" style="text-align:center; padding: 40px 20px;">
+          <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
+          <h3 style="margin-bottom: 8px;">Không thể tải dữ liệu Chủ đề</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 16px;">Vui lòng kiểm tra kết nối mạng hoặc thử lại.</p>
+          <button class="btn btn-primary" onclick="initCommonPhrasesView()">🔄 Tải lại</button>
+        </div>
+      `;
+    }
+  }
+}
+
+// ── RENDER MAIN TOPIC SHOWCASE GRID ───────────────────────────────────────────
+function renderCPShowcase() {
+  const container = document.getElementById('cp-view-container');
+  if (!container) return;
+
+  const categories = [
+    { id: 'ALL', name: '🌟 Tất cả', count: cpState.topics.length },
+    { id: 'Daily Life', name: '☕ Đời sống & Hàng ngày', count: cpState.topics.filter(t => t.category === 'Daily Life').length },
+    { id: 'Business & Career', name: '💼 Công sở & Kinh doanh', count: cpState.topics.filter(t => t.category === 'Business & Career').length },
+    { id: 'Technology & AI', name: '💻 Công nghệ & Kỹ thuật số', count: cpState.topics.filter(t => t.category === 'Technology & AI').length },
+    { id: 'Academic & Exams', name: '🎓 Học thuật & Luyện thi', count: cpState.topics.filter(t => t.category === 'Academic & Exams').length },
+    { id: 'Culture & Social', name: '🎭 Văn hóa & Kỹ năng xã hội', count: cpState.topics.filter(t => t.category === 'Culture & Social').length },
+  ];
+
+  // Filter topics
+  let filtered = cpState.topics;
+  if (cpState.activeCategory !== 'ALL') {
+    filtered = filtered.filter(t => t.category === cpState.activeCategory);
+  }
+  if (cpState.searchQuery.trim()) {
+    const q = cpState.searchQuery.toLowerCase().trim();
+    filtered = filtered.filter(t =>
+      (t.title && t.title.toLowerCase().includes(q)) ||
+      (t.title_vi && t.title_vi.toLowerCase().includes(q)) ||
+      (t.description && t.description.toLowerCase().includes(q)) ||
+      (t.description_vi && t.description_vi.toLowerCase().includes(q))
+    );
+  }
+
+  container.innerHTML = `
+    <!-- HERO HEADER -->
+    <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.12) 50%, rgba(124, 58, 237, 0.12) 100%); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 24px; padding: 28px 24px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04);">
+      <div style="position: absolute; right: -15px; top: -15px; font-size: 110px; opacity: 0.12; user-select: none; pointer-events: none;">💬</div>
+      
+      <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; position: relative; z-index: 1;">
+        <div style="max-width: 680px;">
+          <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #059669; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; margin-bottom: 12px;">
+            <span>✨</span> BẢN PHÁT HÀNH 2026 • 50 CHỦ ĐỀ CHUYÊN SÂU
+          </div>
+          <h1 style="font-size: 26px; font-weight: 900; margin: 0 0 10px; line-height: 1.3; background: linear-gradient(135deg, #059669, #0891b2, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            💬 CÂU NÓI THƯỜNG GẶP & GIAO TIẾP TÌNH HUỐNG
+          </h1>
+          <p style="font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.6;">
+            Kho tư liệu đối thoại chuẩn quốc tế gồm <strong>50 Chủ đề</strong> và <strong>2,500 cặp câu hỏi - đáp song ngữ</strong> kèm phiên âm IPA, giải nghĩa chi tiết, phát âm AI bản ngữ và 4 chế độ luyện phản xạ thông minh!
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; text-align: center; min-width: 100px; box-shadow: var(--shadow-sm);">
+            <div style="font-size: 22px; font-weight: 900; color: #10b981;">50</div>
+            <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 700;">Chủ đề</div>
+          </div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; text-align: center; min-width: 100px; box-shadow: var(--shadow-sm);">
+            <div style="font-size: 22px; font-weight: 900; color: #06b6d4;">2,500</div>
+            <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 700;">Cặp Hỏi - Đáp</div>
+          </div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 18px; text-align: center; min-width: 100px; box-shadow: var(--shadow-sm);">
+            <div style="font-size: 22px; font-weight: 900; color: #8b5cf6;">100%</div>
+            <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 700;">AI Speech & IPA</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEARCH & FILTER BAR -->
+      <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+        <div style="position: relative; flex: 1; min-width: 260px;">
+          <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #94a3b8;">🔍</span>
+          <input type="text" id="cp-search-input" value="${escapeHtml(cpState.searchQuery)}" placeholder="Tìm kiếm câu nói, từ vựng hoặc chủ đề (Anh / Việt)..." 
+                 oninput="handleCPSearch(this.value)"
+                 style="width: 100%; padding: 12px 14px 12px 42px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text-primary); font-size: 14px; box-shadow: var(--shadow-sm); outline: none; transition: border-color 0.2s;">
+          ${cpState.searchQuery ? `
+            <button onclick="clearCPSearch()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 14px; cursor: pointer; color: #94a3b8;">✖</button>
+          ` : ''}
+        </div>
+
+        <button class="btn btn-outline" onclick="openCPGlobalSearchModal()" style="border-radius: 14px; font-weight: 700; padding: 11px 18px; display: flex; align-items: center; gap: 6px;">
+          <span>⚡</span> Tra Cứu 2,500 Câu
+        </button>
+      </div>
+
+      <!-- CATEGORY PILLS -->
+      <div style="display: flex; gap: 8px; margin-top: 16px; overflow-x: auto; padding-bottom: 4px;" class="custom-scrollbar">
+        ${categories.map(cat => `
+          <button onclick="setCPCategory('${cat.id}')" 
+                  style="padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: all 0.2s; border: none;
+                         ${cpState.activeCategory === cat.id ?
+                           'background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,0.3); transform: translateY(-2px);' :
+                           'background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border);'
+                         }">
+            ${cat.name} (${cat.count})
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- TOPICS GRID -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <div style="font-size: 15px; font-weight: 800; color: var(--text-primary);">
+        📚 Danh Sách Chủ Đề (${filtered.length} / 50 Chủ đề)
+      </div>
+      <div style="font-size: 12.5px; color: var(--text-muted);">
+        Nhấn vào bất kỳ chủ đề nào để mở Studio luyện tập
+      </div>
+    </div>
+
+    ${filtered.length === 0 ? `
+      <div class="card" style="text-align:center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🔎</div>
+        <h3 style="margin-bottom: 6px;">Không tìm thấy chủ đề phù hợp</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.</p>
+        <button class="btn btn-primary" onclick="clearCPSearch()">Xem toàn bộ 50 chủ đề</button>
+      </div>
+    ` : `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px;">
+        ${filtered.map(t => renderCPTopicCard(t)).join('')}
+      </div>
+    `}
+  `;
+}
+
+function renderCPTopicCard(topic) {
+  const color = topic.color || '#10b981';
+  return `
+    <div class="cp-topic-card" onclick="openCPTopic(${topic.id})"
+         style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 22px 20px; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px; box-shadow: var(--shadow-sm); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+      
+      <!-- Top Accent Line -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 5px; background: ${color};"></div>
+      
+      <div>
+        <!-- Top Row: Badges & Cartoon -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 44px; height: 44px; border-radius: 14px; background: ${color}18; border: 1.5px solid ${color}40; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.06);">
+              ${topic.cartoon || topic.icon || '💬'}
+            </div>
+            <div>
+              <span style="font-size: 11px; font-weight: 800; color: ${color}; background: ${color}15; padding: 3px 8px; border-radius: 8px;">
+                Chủ đề #${topic.id}
+              </span>
+            </div>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+            <span>💬</span> 50 Cặp Q&A
+          </div>
+        </div>
+
+        <!-- Topic Title EN & VI -->
+        <h3 style="font-size: 16.5px; font-weight: 800; margin: 0 0 4px; color: var(--text-primary); line-height: 1.35;">
+          ${topic.title}
+        </h3>
+        <div style="font-size: 13.5px; font-weight: 700; color: #059669; margin-bottom: 10px;">
+          ${topic.title_vi}
+        </div>
+
+        <!-- Description -->
+        <p style="font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+          ${topic.description_vi || topic.description}
+        </p>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 8px;">
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">
+          ${topic.category}
+        </span>
+        <span style="font-size: 13px; font-weight: 800; color: ${color}; display: flex; align-items: center; gap: 4px;">
+          Vào luyện tập <span>➔</span>
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+// ── FILTER & SEARCH HANDLERS ──────────────────────────────────────────────────
+function setCPCategory(catId) {
+  cpState.activeCategory = catId;
+  renderCPShowcase();
+}
+
+let cpSearchTimeout = null;
+function handleCPSearch(val) {
+  cpState.searchQuery = val;
+  clearTimeout(cpSearchTimeout);
+  cpSearchTimeout = setTimeout(() => {
+    renderCPShowcase();
+  }, 250);
+}
+
+function clearCPSearch() {
+  cpState.searchQuery = '';
+  cpState.activeCategory = 'ALL';
+  renderCPShowcase();
+}
+
+// ── OPEN TOPIC STUDIO ─────────────────────────────────────────────────────────
+async function openCPTopic(topicId) {
+  const container = document.getElementById('cp-view-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:300px;flex-direction:column;gap:16px;">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div style="font-size:14px;color:var(--text-secondary);font-weight:700;">Đang chuẩn bị 50 cặp câu đàm thoại...</div>
+    </div>
+  `;
+
+  try {
+    let res = null;
+    if (api && api.commonPhrases) {
+      res = await api.commonPhrases.getTopic(topicId);
+    }
+
+    if (res && res.topic && res.phrases) {
+      cpState.selectedTopic = res.topic;
+      cpState.topicPhrases = res.phrases;
+    } else {
+      // Fallback
+      const topic = cpState.topics.find(t => String(t.id) === String(topicId)) || cpState.topics[0];
+      const allPhrases = (window.STANDALONE_DATA && window.STANDALONE_DATA.common_phrases) || {};
+      const phrases = allPhrases[String(topicId)] || allPhrases[String(topic.id)] || [];
+      cpState.selectedTopic = topic;
+      cpState.topicPhrases = phrases;
+    }
+
+    cpState.filteredPhrases = [...cpState.topicPhrases];
+    cpState.activeTab = 'dialogue';
+    cpState.currentCardIdx = 0;
+    cpState.cardFlipped = false;
+
+    renderCPTopicStudio();
+  } catch (err) {
+    console.error('Error opening topic:', err);
+    toast('Không thể tải chi tiết chủ đề', 'error');
+    renderCPShowcase();
+  }
+}
+
+function backToCPTopics() {
+  cpState.selectedTopic = null;
+  cpState.topicPhrases = [];
+  renderCPShowcase();
+}
+
+// ── RENDER TOPIC STUDIO (4 INTERACTIVE MODES) ─────────────────────────────────
+function renderCPTopicStudio() {
+  const container = document.getElementById('cp-view-container');
+  if (!container || !cpState.selectedTopic) return;
+
+  const topic = cpState.selectedTopic;
+  const color = topic.color || '#10b981';
+
+  container.innerHTML = `
+    <!-- TOP BACK BAR -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+      <button class="btn btn-outline" onclick="backToCPTopics()" style="font-weight: 800; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;">
+        <span>⬅️</span> Quay lại danh sách 50 Chủ đề
+      </button>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span style="font-size: 12px; font-weight: 800; color: ${color}; background: ${color}15; border: 1px solid ${color}40; padding: 5px 12px; border-radius: 20px;">
+          ${topic.category}
+        </span>
+        <span style="font-size: 12px; font-weight: 800; color: #059669; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 20px;">
+          💬 ${cpState.topicPhrases.length} Cặp Q&A
+        </span>
+      </div>
+    </div>
+
+    <!-- TOPIC STUDIO HEADER -->
+    <div style="background: linear-gradient(135deg, ${color}18 0%, rgba(6, 182, 212, 0.1) 100%); border: 1.5px solid ${color}40; border-radius: 24px; padding: 24px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+      <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+        <div style="width: 72px; height: 72px; border-radius: 20px; background: ${color}25; border: 2px solid ${color}; display: flex; align-items: center; justify-content: center; font-size: 38px; box-shadow: 0 8px 20px ${color}30; flex-shrink: 0;">
+          ${topic.cartoon || topic.icon || '💬'}
+        </div>
+
+        <div style="flex: 1; min-width: 260px;">
+          <div style="font-size: 12px; font-weight: 800; color: ${color}; letter-spacing: 0.5px; margin-bottom: 4px;">
+            CHỦ ĐỀ SỐ #${topic.id}
+          </div>
+          <h2 style="font-size: 22px; font-weight: 900; margin: 0 0 4px; color: var(--text-primary); line-height: 1.3;">
+            ${topic.title}
+          </h2>
+          <div style="font-size: 16px; font-weight: 800; color: #059669; margin-bottom: 8px;">
+            ${topic.title_vi}
+          </div>
+          <p style="font-size: 13.5px; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+            ${topic.description_vi || topic.description}
+          </p>
+        </div>
+      </div>
+
+      <!-- 4 MODE TABS -->
+      <div style="display: flex; gap: 8px; margin-top: 24px; overflow-x: auto; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06);" class="custom-scrollbar">
+        <button onclick="switchCPTab('dialogue')" 
+                style="padding: 10px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 800; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: all 0.2s; white-space: nowrap;
+                       ${cpState.activeTab === 'dialogue' ?
+                         'background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.35); transform: translateY(-2px);' :
+                         'background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border);'
+                       }">
+          <span>💬</span> 1. Đối thoại 1:1 (${cpState.topicPhrases.length})
+        </button>
+
+        <button onclick="switchCPTab('flashcards')" 
+                style="padding: 10px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 800; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: all 0.2s; white-space: nowrap;
+                       ${cpState.activeTab === 'flashcards' ?
+                         'background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.35); transform: translateY(-2px);' :
+                         'background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border);'
+                       }">
+          <span>🃏</span> 2. Thẻ 3D Song Ngữ
+        </button>
+
+        <button onclick="switchCPTab('reflex')" 
+                style="padding: 10px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 800; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: all 0.2s; white-space: nowrap;
+                       ${cpState.activeTab === 'reflex' ?
+                         'background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.35); transform: translateY(-2px);' :
+                         'background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border);'
+                       }">
+          <span>⚡</span> 3. Thử thách phản xạ
+        </button>
+
+        <button onclick="switchCPTab('bookmarks')" 
+                style="padding: 10px 18px; border-radius: 14px; font-size: 13.5px; font-weight: 800; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px; transition: all 0.2s; white-space: nowrap;
+                       ${cpState.activeTab === 'bookmarks' ?
+                         'background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; box-shadow: 0 4px 14px rgba(16,185,129,0.35); transform: translateY(-2px);' :
+                         'background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border);'
+                       }">
+          <span>⭐</span> 4. Đã lưu (${getTopicBookmarkCount()})
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIVE TAB BODY -->
+    <div id="cp-tab-content">
+      ${renderActiveCPTab()}
+    </div>
+  `;
+}
+
+function switchCPTab(tab) {
+  cpState.activeTab = tab;
+  renderCPTopicStudio();
+}
+
+function renderActiveCPTab() {
+  if (cpState.activeTab === 'dialogue') {
+    return renderCPDialogueTab();
+  } else if (cpState.activeTab === 'flashcards') {
+    return renderCPFlashcardsTab();
+  } else if (cpState.activeTab === 'reflex') {
+    return renderCPReflexTab();
+  } else if (cpState.activeTab === 'bookmarks') {
+    return renderCPBookmarksTab();
+  }
+  return '';
+}
+
+// ── 1. DIALOGUE TAB (ALL 50 PAIRS) ────────────────────────────────────────────
+function renderCPDialogueTab() {
+  const phrases = cpState.filteredPhrases;
+
+  return `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 800; font-size: 15px;">💬 Các cặp hội thoại chuẩn tình huống (${phrases.length} câu)</span>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-outline btn-sm" onclick="playAllPhrasesInTopic()" style="border-radius: 10px; font-weight: 700;">
+          🔊 Tự động phát toàn bộ
+        </button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      ${phrases.map((p, idx) => renderCPDialogueItem(p, idx)).join('')}
+    </div>
+  `;
+}
+
+function renderCPDialogueItem(p, idx) {
+  const isBookmarked = cpState.bookmarks.includes(p.id);
+
+  return `
+    <div class="cp-dialogue-card" id="phrase-card-${p.id}"
+         style="background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 20px; padding: 22px 20px; box-shadow: var(--shadow-sm); transition: border-color 0.2s;">
+      
+      <!-- Situation & Difficulty Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #10b981, #06b6d4); padding: 3px 10px; border-radius: 20px;">
+            #${p.order_index || (idx + 1)}
+          </span>
+          <span style="font-size: 12.5px; font-weight: 800; color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 3px 10px; border-radius: 8px;">
+            📌 ${p.situation || 'Giao tiếp tình huống'}
+          </span>
+          <span style="font-size: 11px; font-weight: 700; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); padding: 3px 8px; border-radius: 8px;">
+            ${p.difficulty || 'Intermediate'}
+          </span>
+        </div>
+
+        <button onclick="toggleCPBookmark(${p.id})" title="${isBookmarked ? 'Bỏ lưu' : 'Lưu câu này'}"
+                style="background: none; border: none; cursor: pointer; font-size: 20px; color: ${isBookmarked ? '#f59e0b' : '#94a3b8'}; transition: transform 0.2s;">
+          ${isBookmarked ? '★' : '☆'}
+        </button>
+      </div>
+
+      <!-- QUESTION CONTAINER (Speaker 1) -->
+      <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 16px; padding: 16px; margin-bottom: 12px; position: relative;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+          <div style="width: 42px; height: 42px; border-radius: 12px; background: #e0e7ff; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            ${p.q_avatar || '🙋‍♀️'}
+          </div>
+
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 11.5px; font-weight: 800; color: #4f46e5; text-transform: uppercase;">
+                ${p.q_speaker || 'Speaker A'} (Hỏi)
+              </span>
+              <div style="display: flex; gap: 4px;">
+                <button class="btn-voice-mini" onclick="speakText('${escapeQuotes(p.q_text)}', 'en-US')" title="Nghe phát âm chuẩn">
+                  🔊
+                </button>
+                <button class="btn-voice-mini" onclick="speakText('${escapeQuotes(p.q_text)}', 'en-US', 0.75)" title="Nghe chậm (0.75x)">
+                  🐢
+                </button>
+                <button class="btn-voice-mini" onclick="startCPMicPractice(${p.id}, 'Q', '${escapeQuotes(p.q_text)}')" title="Luyện nói câu này bằng Mic">
+                  🎤
+                </button>
+              </div>
+            </div>
+
+            <!-- English Text -->
+            <div style="font-size: 15.5px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; line-height: 1.4;">
+              ${p.q_text}
+            </div>
+
+            <!-- IPA -->
+            <div style="font-size: 12.5px; font-family: monospace; color: #6366f1; margin-bottom: 6px;">
+              ${p.q_ipa || ''}
+            </div>
+
+            <!-- Vietnamese -->
+            <div style="font-size: 13.5px; font-weight: 600; color: var(--text-secondary); line-height: 1.4;">
+              🇻🇳 ${p.q_vi}
+            </div>
+
+            <!-- Live Speech Recognition Feedback -->
+            <div id="mic-feedback-${p.id}-Q" style="display:none; margin-top: 8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANSWER CONTAINER (Speaker 2) -->
+      <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 16px; padding: 16px; margin-bottom: 12px; position: relative;">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+          <div style="width: 42px; height: 42px; border-radius: 12px; background: #d1fae5; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            ${p.a_avatar || '🙋‍♂️'}
+          </div>
+
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 11.5px; font-weight: 800; color: #059669; text-transform: uppercase;">
+                ${p.a_speaker || 'Speaker B'} (Đáp)
+              </span>
+              <div style="display: flex; gap: 4px;">
+                <button class="btn-voice-mini" onclick="speakText('${escapeQuotes(p.a_text)}', 'en-US')" title="Nghe phát âm chuẩn">
+                  🔊
+                </button>
+                <button class="btn-voice-mini" onclick="speakText('${escapeQuotes(p.a_text)}', 'en-US', 0.75)" title="Nghe chậm (0.75x)">
+                  🐢
+                </button>
+                <button class="btn-voice-mini" onclick="startCPMicPractice(${p.id}, 'A', '${escapeQuotes(p.a_text)}')" title="Luyện nói câu này bằng Mic">
+                  🎤
+                </button>
+              </div>
+            </div>
+
+            <!-- English Text -->
+            <div style="font-size: 15.5px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; line-height: 1.4;">
+              ${p.a_text}
+            </div>
+
+            <!-- IPA -->
+            <div style="font-size: 12.5px; font-family: monospace; color: #059669; margin-bottom: 6px;">
+              ${p.a_ipa || ''}
+            </div>
+
+            <!-- Vietnamese -->
+            <div style="font-size: 13.5px; font-weight: 600; color: var(--text-secondary); line-height: 1.4;">
+              🇻🇳 ${p.a_vi}
+            </div>
+
+            <!-- Live Speech Recognition Feedback -->
+            <div id="mic-feedback-${p.id}-A" style="display:none; margin-top: 8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIPS & KEY VOCAB FOOTER -->
+      <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 10px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px;">
+        <div style="color: #b45309; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 200px;">
+          <span>💡</span> <strong>Mẹo giao tiếp:</strong> ${p.tips || 'Chú ý nối âm tự nhiên và hạ giọng ở cuối câu trần thuật.'}
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span style="color: #64748b; font-weight: 700;">🔑 Từ khóa:</span>
+          ${(p.key_vocab || '').split(',').map(w => w.trim()).filter(Boolean).map(w => `
+            <span style="background: rgba(255,255,255,0.8); border: 1px solid rgba(245,158,11,0.3); color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 800;">
+              ${w}
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── 2. 3D FLASHCARDS TAB ──────────────────────────────────────────────────────
+function renderCPFlashcardsTab() {
+  const phrases = cpState.topicPhrases;
+  if (!phrases || !phrases.length) return '<div class="card"><p>Chưa có dữ liệu thẻ flashcard.</p></div>';
+
+  const idx = cpState.currentCardIdx;
+  const p = phrases[idx];
+  const total = phrases.length;
+  const isFlipped = cpState.cardFlipped;
+
+  return `
+    <div style="max-width: 680px; margin: 0 auto; text-align: center;">
+      <!-- Flashcard Controls & Counter -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);">
+          🃏 Thẻ số: <span style="color:#10b981;">${idx + 1}</span> / ${total}
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-outline btn-sm" onclick="shuffleCPCards()" style="border-radius: 10px;">
+            🔀 Trộn thẻ
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="playCPCardAudioPair()" style="border-radius: 10px; font-weight: 700;">
+            🔊 Nghe cả cặp
+          </button>
+        </div>
+      </div>
+
+      <!-- PROGRESS BAR -->
+      <div style="width: 100%; height: 6px; background: var(--border); border-radius: 10px; margin-bottom: 24px; overflow: hidden;">
+        <div style="height: 100%; width: ${((idx + 1) / total) * 100}%; background: linear-gradient(90deg, #10b981, #06b6d4); transition: width 0.3s ease;"></div>
+      </div>
+
+      <!-- 3D FLIP CARD -->
+      <div class="cp-3d-card-container" onclick="flipCPCard()"
+           style="perspective: 1000px; cursor: pointer; min-height: 380px; margin-bottom: 24px;">
+        <div class="cp-3d-card ${isFlipped ? 'flipped' : ''}"
+             style="position: relative; width: 100%; min-height: 380px; text-align: center; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; border-radius: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.08);">
+          
+          <!-- FRONT: QUESTION -->
+          <div style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden; background: var(--bg-card); border: 2px solid rgba(99, 102, 241, 0.35); border-radius: 24px; padding: 32px 24px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; font-weight: 800; background: rgba(99, 102, 241, 0.12); color: #4f46e5; padding: 4px 12px; border-radius: 20px;">
+                MẶT TRƯỚC: CÂU HỎI / GỢI MỞ
+              </span>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">
+                📌 ${p.situation || 'Tình huống'}
+              </span>
+            </div>
+
+            <div style="margin: 24px 0;">
+              <div style="font-size: 48px; margin-bottom: 12px;">${p.q_avatar || '🙋‍♀️'}</div>
+              <div style="font-size: 12px; font-weight: 800; color: #4f46e5; text-transform: uppercase; margin-bottom: 6px;">
+                ${p.q_speaker || 'Speaker A'}
+              </div>
+              <h3 style="font-size: 20px; font-weight: 900; color: var(--text-primary); margin: 0 0 8px; line-height: 1.4;">
+                ${p.q_text}
+              </h3>
+              <div style="font-size: 14px; font-family: monospace; color: #6366f1; margin-bottom: 12px;">
+                ${p.q_ipa || ''}
+              </div>
+              <div style="font-size: 15px; font-weight: 700; color: #059669;">
+                🇻🇳 ${p.q_vi}
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+              <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); speakText('${escapeQuotes(p.q_text)}', 'en-US')" style="border-radius: 12px; font-weight: 700;">
+                🔊 Nghe câu hỏi
+              </button>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">
+                (Nhấn thẻ để lật xem câu đáp)
+              </span>
+            </div>
+          </div>
+
+          <!-- BACK: ANSWER -->
+          <div style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden; transform: rotateY(180deg); background: var(--bg-card); border: 2px solid rgba(16, 185, 129, 0.35); border-radius: 24px; padding: 32px 24px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; font-weight: 800; background: rgba(16, 185, 129, 0.12); color: #059669; padding: 4px 12px; border-radius: 20px;">
+                MẶT SAU: CÂU TRẢ LỜI CHUẨN
+              </span>
+              <span style="font-size: 12px; color: #b45309; font-weight: 700;">
+                💡 ${p.tips ? p.tips.substring(0, 30) + '...' : 'Giao tiếp bản ngữ'}
+              </span>
+            </div>
+
+            <div style="margin: 24px 0;">
+              <div style="font-size: 48px; margin-bottom: 12px;">${p.a_avatar || '🙋‍♂️'}</div>
+              <div style="font-size: 12px; font-weight: 800; color: #059669; text-transform: uppercase; margin-bottom: 6px;">
+                ${p.a_speaker || 'Speaker B'}
+              </div>
+              <h3 style="font-size: 20px; font-weight: 900; color: var(--text-primary); margin: 0 0 8px; line-height: 1.4;">
+                ${p.a_text}
+              </h3>
+              <div style="font-size: 14px; font-family: monospace; color: #059669; margin-bottom: 12px;">
+                ${p.a_ipa || ''}
+              </div>
+              <div style="font-size: 15px; font-weight: 700; color: #059669;">
+                🇻🇳 ${p.a_vi}
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+              <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); speakText('${escapeQuotes(p.a_text)}', 'en-US')" style="border-radius: 12px; font-weight: 700;">
+                🔊 Nghe câu đáp
+              </button>
+              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">
+                (Nhấn thẻ để lật lại)
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PREV / NEXT NAVIGATION -->
+      <div style="display: flex; justify-content: center; gap: 14px;">
+        <button class="btn btn-outline" onclick="prevCPCard()" ${idx === 0 ? 'disabled' : ''} style="border-radius: 14px; font-weight: 800; padding: 12px 24px;">
+          ⬅️ Thẻ trước
+        </button>
+        <button class="btn btn-primary" onclick="flipCPCard()" style="border-radius: 14px; font-weight: 800; padding: 12px 28px; background: linear-gradient(135deg, #10b981, #06b6d4);">
+          🔄 Lật thẻ
+        </button>
+        <button class="btn btn-outline" onclick="nextCPCard()" ${idx === total - 1 ? 'disabled' : ''} style="border-radius: 14px; font-weight: 800; padding: 12px 24px;">
+          Thẻ tiếp ➡️
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function flipCPCard() {
+  cpState.cardFlipped = !cpState.cardFlipped;
+  const cardEl = document.querySelector('.cp-3d-card');
+  if (cardEl) {
+    if (cpState.cardFlipped) cardEl.classList.add('flipped');
+    else cardEl.classList.remove('flipped');
+  }
+}
+
+function prevCPCard() {
+  if (cpState.currentCardIdx > 0) {
+    cpState.currentCardIdx--;
+    cpState.cardFlipped = false;
+    renderCPTopicStudio();
+  }
+}
+
+function nextCPCard() {
+  if (cpState.currentCardIdx < cpState.topicPhrases.length - 1) {
+    cpState.currentCardIdx++;
+    cpState.cardFlipped = false;
+    renderCPTopicStudio();
+  }
+}
+
+function shuffleCPCards() {
+  const arr = [...cpState.topicPhrases];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  cpState.topicPhrases = arr;
+  cpState.currentCardIdx = 0;
+  cpState.cardFlipped = false;
+  renderCPTopicStudio();
+  toast('Đã xáo trộn thứ tự các thẻ flashcard! 🔀', 'info');
+}
+
+function playCPCardAudioPair() {
+  const p = cpState.topicPhrases[cpState.currentCardIdx];
+  if (!p) return;
+  speakText(p.q_text, 'en-US');
+  setTimeout(() => {
+    speakText(p.a_text, 'en-US');
+  }, 3200);
+}
+
+// ── 3. REFLEX QUIZ TAB ────────────────────────────────────────────────────────
+function initCPReflexQuiz() {
+  const phrases = cpState.topicPhrases;
+  if (!phrases || phrases.length < 4) return;
+
+  const shuffled = [...phrases].sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 10);
+
+  const questions = selected.map(target => {
+    // 3 distractors
+    const others = phrases.filter(p => p.id !== target.id);
+    const distractors = others.sort(() => 0.5 - Math.random()).slice(0, 3).map(o => o.a_text);
+    const options = [target.a_text, ...distractors].sort(() => 0.5 - Math.random());
+
+    return {
+      target,
+      options,
+      correctAnswer: target.a_text
+    };
+  });
+
+  cpState.reflex = {
+    questions,
+    currentIdx: 0,
+    score: 0,
+    streak: 0,
+    selectedOption: null,
+    answered: false
+  };
+}
+
+function renderCPReflexTab() {
+  if (!cpState.reflex.questions.length) {
+    initCPReflexQuiz();
+  }
+
+  const r = cpState.reflex;
+  if (r.currentIdx >= r.questions.length) {
+    // Show summary
+    const pct = Math.round((r.score / r.questions.length) * 100);
+    return `
+      <div class="card" style="max-width: 580px; margin: 0 auto; text-align: center; padding: 40px 24px; border-radius: 24px;">
+        <div style="font-size: 64px; margin-bottom: 16px;">🏆</div>
+        <h2 style="font-size: 24px; font-weight: 900; margin-bottom: 8px;">Hoàn Thành Thử Thách Phản Xạ!</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 24px;">Bạn đã xuất sắc hoàn thành phần thử thách phản xạ giao tiếp.</p>
+        
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.12)); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 20px; padding: 24px; margin-bottom: 24px;">
+          <div style="font-size: 44px; font-weight: 900; color: #10b981; margin-bottom: 4px;">${r.score} / ${r.questions.length}</div>
+          <div style="font-size: 14px; font-weight: 800; color: var(--text-secondary);">Độ chính xác phản xạ: ${pct}%</div>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 12px;">
+          <button class="btn btn-primary" onclick="initCPReflexQuiz(); renderCPTopicStudio();" style="border-radius: 14px; font-weight: 800; padding: 12px 28px; background: linear-gradient(135deg, #10b981, #06b6d4);">
+            🔄 Thử thách lượt mới
+          </button>
+          <button class="btn btn-outline" onclick="switchCPTab('dialogue')" style="border-radius: 14px; font-weight: 800; padding: 12px 24px;">
+            💬 Quay lại xem đối thoại
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  const cur = r.questions[r.currentIdx];
+  const target = cur.target;
+
+  return `
+    <div style="max-width: 680px; margin: 0 auto;">
+      <!-- Quiz Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);">
+          ⚡ Câu phản xạ: <span style="color:#10b981;">${r.currentIdx + 1}</span> / ${r.questions.length}
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <span style="font-size: 13px; font-weight: 800; color: #ea580c;">🔥 Chuỗi: ${r.streak}</span>
+          <span style="font-size: 13px; font-weight: 800; color: #10b981;">⭐ Điểm: ${r.score}</span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div style="width: 100%; height: 6px; background: var(--border); border-radius: 10px; margin-bottom: 24px; overflow: hidden;">
+        <div style="height: 100%; width: ${((r.currentIdx + 1) / r.questions.length) * 100}%; background: linear-gradient(90deg, #10b981, #06b6d4); transition: width 0.3s ease;"></div>
+      </div>
+
+      <!-- SITUATIONAL PROMPT -->
+      <div style="background: var(--bg-card); border: 2px solid rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <span style="font-size: 12px; font-weight: 800; color: #4f46e5; background: rgba(99, 102, 241, 0.1); padding: 4px 10px; border-radius: 10px;">
+            📌 Tình huống: ${target.situation || 'Giao tiếp'}
+          </span>
+          <button class="btn btn-sm btn-outline" onclick="speakText('${escapeQuotes(target.q_text)}', 'en-US')" style="border-radius: 10px; font-weight: 700;">
+            🔊 Nghe câu hỏi
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 8px;">
+          <div style="font-size: 36px;">${target.q_avatar || '🙋‍♀️'}</div>
+          <div>
+            <div style="font-size: 12px; font-weight: 800; color: #6366f1; text-transform: uppercase;">
+              ${target.q_speaker || 'Đối tác'} nói:
+            </div>
+            <div style="font-size: 18px; font-weight: 900; color: var(--text-primary); line-height: 1.4;">
+              "${target.q_text}"
+            </div>
+            <div style="font-size: 13.5px; color: var(--text-secondary); margin-top: 2px;">
+              🇻🇳 (${target.q_vi})
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 13px; font-weight: 800; color: #059669; margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px;">
+          👉 Bạn nên phản hồi lại bằng câu nào sau đây?
+        </div>
+      </div>
+
+      <!-- OPTIONS -->
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+        ${cur.options.map((opt, i) => {
+          let btnStyle = 'background: var(--bg-card); border: 1.5px solid var(--border); color: var(--text-primary);';
+          if (r.answered) {
+            if (opt === cur.correctAnswer) {
+              btnStyle = 'background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; color: #047857; font-weight: 800;';
+            } else if (opt === r.selectedOption) {
+              btnStyle = 'background: rgba(239, 68, 68, 0.12); border: 2px solid #ef4444; color: #b91c1c;';
+            } else {
+              btnStyle = 'background: var(--bg-card); opacity: 0.6; border: 1px solid var(--border);';
+            }
+          }
+
+          return `
+            <button class="cp-quiz-opt" onclick="selectCPReflexOption('${escapeQuotes(opt)}')" ${r.answered ? 'disabled' : ''}
+                    style="${btnStyle} padding: 16px 20px; border-radius: 16px; font-size: 14.5px; text-align: left; cursor: ${r.answered ? 'default' : 'pointer'}; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <span style="line-height: 1.4;">
+                <strong style="margin-right: 8px;">${String.fromCharCode(65 + i)}.</strong> ${opt}
+              </span>
+              <span style="font-size: 18px;">
+                ${r.answered && opt === cur.correctAnswer ? '✅' : ''}
+                ${r.answered && opt === r.selectedOption && opt !== cur.correctAnswer ? '❌' : ''}
+              </span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- NEXT BUTTON -->
+      ${r.answered ? `
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" onclick="nextCPReflexQuestion()" style="border-radius: 14px; font-weight: 800; padding: 12px 28px; background: linear-gradient(135deg, #10b981, #06b6d4);">
+            ${r.currentIdx < r.questions.length - 1 ? 'Câu tiếp theo ➔' : 'Xem kết quả tổng kết 🏆'}
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function selectCPReflexOption(opt) {
+  const r = cpState.reflex;
+  if (r.answered) return;
+
+  r.selectedOption = opt;
+  r.answered = true;
+
+  const cur = r.questions[r.currentIdx];
+  if (opt === cur.correctAnswer) {
+    r.score++;
+    r.streak++;
+    toast('Chính xác! Phản xạ rất tự nhiên 🌟 (+15 XP)', 'success');
+  } else {
+    r.streak = 0;
+    toast('Chưa chính xác, hãy quan sát đáp án đúng nhé! 💡', 'warning');
+  }
+
+  renderCPTopicStudio();
+}
+
+function nextCPReflexQuestion() {
+  const r = cpState.reflex;
+  r.currentIdx++;
+  r.answered = false;
+  r.selectedOption = null;
+  renderCPTopicStudio();
+}
+
+// ── 4. BOOKMARKS TAB ──────────────────────────────────────────────────────────
+function renderCPBookmarksTab() {
+  const bookmarkedPhrases = cpState.topicPhrases.filter(p => cpState.bookmarks.includes(p.id));
+
+  if (!bookmarkedPhrases.length) {
+    return `
+      <div class="card" style="text-align: center; padding: 60px 20px; border-radius: 20px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">⭐</div>
+        <h3 style="margin-bottom: 8px;">Chưa có câu nào được lưu trong chủ đề này</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 18px;">
+          Hãy bấm vào biểu tượng ngôi sao <strong>☆</strong> ở bất kỳ cặp câu nào trong tab "Đối thoại 1:1" để lưu vào danh sách học lại.
+        </p>
+        <button class="btn btn-primary" onclick="switchCPTab('dialogue')" style="border-radius: 12px; font-weight: 700;">
+          💬 Khám phá câu nói ngay
+        </button>
+      </div>
+    `;
+  }
+
+  return `
+    <div style="margin-bottom: 16px; font-size: 14.5px; font-weight: 800;">
+      ⭐ Danh sách câu quan trọng đã lưu (${bookmarkedPhrases.length} câu)
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      ${bookmarkedPhrases.map((p, idx) => renderCPDialogueItem(p, idx)).join('')}
+    </div>
+  `;
+}
+
+function getTopicBookmarkCount() {
+  if (!cpState.topicPhrases || !cpState.bookmarks) return 0;
+  return cpState.topicPhrases.filter(p => cpState.bookmarks.includes(p.id)).length;
+}
+
+function toggleCPBookmark(id) {
+  const idx = cpState.bookmarks.indexOf(id);
+  if (idx > -1) {
+    cpState.bookmarks.splice(idx, 1);
+    toast('Đã bỏ lưu câu khỏi danh sách yêu thích', 'info');
+  } else {
+    cpState.bookmarks.push(id);
+    toast('Đã lưu câu vào danh sách học tập ⭐', 'success');
+  }
+  localStorage.setItem('vihtech_phrase_bookmarks', JSON.stringify(cpState.bookmarks));
+  renderCPTopicStudio();
+}
+
+// ── PLAY ALL PHRASES SEQUENTIALLY ─────────────────────────────────────────────
+let cpAutoPlayActive = false;
+let cpAutoPlayIdx = 0;
+
+function playAllPhrasesInTopic() {
+  if (cpAutoPlayActive) {
+    cpAutoPlayActive = false;
+    window.stopAllAudio();
+    toast('Đã dừng tự động phát', 'info');
+    return;
+  }
+
+  cpAutoPlayActive = true;
+  cpAutoPlayIdx = 0;
+  toast('Bắt đầu tự động phát các câu hội thoại... Bấm lại để dừng.', 'info');
+  playNextInSequence();
+}
+
+function playNextInSequence() {
+  if (!cpAutoPlayActive || cpAutoPlayIdx >= cpState.topicPhrases.length) {
+    cpAutoPlayActive = false;
+    toast('Đã phát xong toàn bộ các câu trong chủ đề! 🏆', 'success');
+    return;
+  }
+
+  const p = cpState.topicPhrases[cpAutoPlayIdx];
+  const cardEl = document.getElementById(`phrase-card-${p.id}`);
+  if (cardEl) {
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    cardEl.style.borderColor = '#10b981';
+    setTimeout(() => { cardEl.style.borderColor = 'var(--border)'; }, 3000);
+  }
+
+  speakText(p.q_text, 'en-US');
+  setTimeout(() => {
+    if (!cpAutoPlayActive) return;
+    speakText(p.a_text, 'en-US');
+    setTimeout(() => {
+      if (!cpAutoPlayActive) return;
+      cpAutoPlayIdx++;
+      playNextInSequence();
+    }, 3500);
+  }, 3000);
+}
+
+// ── SPEECH RECOGNITION / PRONUNCIATION PRACTICE ───────────────────────────────
+function startCPMicPractice(phraseId, speaker, targetText) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    toast('Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói Web Speech API (Hãy thử Google Chrome hoặc Microsoft Edge).', 'warning');
+    return;
+  }
+
+  const feedbackEl = document.getElementById(`mic-feedback-${phraseId}-${speaker}`);
+  if (feedbackEl) {
+    feedbackEl.style.display = 'block';
+    feedbackEl.innerHTML = `
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1.5px dashed #10b981; border-radius: 12px; padding: 12px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444; animation: pulse 1.2s infinite;"></div>
+          <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Đang lắng nghe bạn đọc câu... Hãy phát âm to và rõ ràng!</span>
+        </div>
+        <button class="btn btn-xs btn-outline" onclick="stopCPMicPractice('${phraseId}', '${speaker}')">Dừng</button>
+      </div>
+    `;
+  }
+
+  try {
+    const recognition = new SpeechRec();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const score = calculateSpeechAccuracy(transcript, targetText);
+      displayMicScore(phraseId, speaker, transcript, targetText, score);
+    };
+
+    recognition.onerror = (event) => {
+      if (feedbackEl) {
+        feedbackEl.innerHTML = `
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 8px 12px; font-size: 12.5px; color: #dc2626;">
+            ⚠️ Không nhận diện được âm thanh: ${event.error || 'Vui lòng thử lại.'}
+          </div>
+        `;
+      }
+    };
+
+    recognition.start();
+  } catch (e) {
+    console.error('Mic error:', e);
+  }
+}
+
+function stopCPMicPractice(phraseId, speaker) {
+  const feedbackEl = document.getElementById(`mic-feedback-${phraseId}-${speaker}`);
+  if (feedbackEl) feedbackEl.style.display = 'none';
+}
+
+function calculateSpeechAccuracy(spoken, target) {
+  const cleanSpoken = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ');
+  const cleanTarget = target.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ');
+
+  let matchCount = 0;
+  cleanTarget.forEach(w => {
+    if (cleanSpoken.includes(w)) matchCount++;
+  });
+
+  const ratio = matchCount / Math.max(cleanTarget.length, 1);
+  return Math.min(100, Math.round(ratio * 100));
+}
+
+function displayMicScore(phraseId, speaker, spoken, target, score) {
+  const feedbackEl = document.getElementById(`mic-feedback-${phraseId}-${speaker}`);
+  if (!feedbackEl) return;
+
+  let color = '#10b981';
+  let badgeText = '🌟 Xuất sắc!';
+  if (score < 60) {
+    color = '#ef4444';
+    badgeText = '🔄 Cần luyện thêm!';
+  } else if (score < 80) {
+    color = '#f59e0b';
+    badgeText = '👍 Khá tốt!';
+  }
+
+  feedbackEl.innerHTML = `
+    <div style="background: ${color}12; border: 1.5px solid ${color}; border-radius: 14px; padding: 12px 16px; margin-top: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 12px; font-weight: 800; color: ${color};">${badgeText}</span>
+        <span style="font-size: 14px; font-weight: 900; color: ${color};">${score}% Độ chính xác</span>
+      </div>
+      <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.4;">
+        <strong>Bạn vừa nói:</strong> "${spoken}"
+      </div>
+    </div>
+  `;
+}
+
+// ── GLOBAL SEARCH MODAL (SEARCH OVER 2,500 PHRASES) ───────────────────────────
+function openCPGlobalSearchModal() {
+  let modal = document.getElementById('cp-search-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'cp-search-modal';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.right = '0';
+    modal.style.bottom = '0';
+    modal.style.background = 'rgba(0,0,0,0.6)';
+    modal.style.zIndex = '9999';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.padding = '20px';
+    document.body.appendChild(modal);
+  }
+
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div style="background: var(--bg-card); width: 100%; max-width: 720px; max-height: 85vh; border-radius: 24px; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden;">
+      <!-- Modal Header -->
+      <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 18px; font-weight: 900; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+          <span>⚡</span> Tra Cứu Toàn Diện 2,500 Câu Hội Thoại
+        </div>
+        <button onclick="closeCPGlobalSearchModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary);">✖</button>
+      </div>
+
+      <!-- Search Input -->
+      <div style="padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--bg-secondary);">
+        <input type="text" id="cp-modal-search-input" placeholder="Nhập từ hoặc câu tiếng Anh / tiếng Việt để tra cứu..." 
+               oninput="executeCPGlobalSearch(this.value)"
+               style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg-card); color: var(--text-primary); font-size: 14px; outline: none;">
+      </div>
+
+      <!-- Results Body -->
+      <div id="cp-modal-results" style="padding: 20px 24px; overflow-y: auto; flex: 1;" class="custom-scrollbar">
+        <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+          Gõ từ khóa để tra cứu ngay trong 2,500 câu nói tình huống...
+        </div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const inp = document.getElementById('cp-modal-search-input');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function closeCPGlobalSearchModal() {
+  const modal = document.getElementById('cp-search-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+let cpGlobalSearchTimeout = null;
+async function executeCPGlobalSearch(query) {
+  clearTimeout(cpGlobalSearchTimeout);
+  if (!query || query.trim().length < 2) {
+    const resBox = document.getElementById('cp-modal-results');
+    if (resBox) resBox.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);">Gõ ít nhất 2 ký tự để tra cứu...</div>';
+    return;
+  }
+
+  cpGlobalSearchTimeout = setTimeout(async () => {
+    const resBox = document.getElementById('cp-modal-results');
+    if (!resBox) return;
+
+    resBox.innerHTML = '<div style="text-align:center;padding:30px 0;"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+
+    try {
+      let results = [];
+      if (api && api.commonPhrases) {
+        const res = await api.commonPhrases.search(query);
+        if (res && res.results) results = res.results;
+      }
+      
+      if (!results.length && window.STANDALONE_DATA) {
+        const q = query.toLowerCase().trim();
+        const allPhrases = window.STANDALONE_DATA.common_phrases || {};
+        const topics = window.STANDALONE_DATA.common_phrases_topics || [];
+        const tMap = {};
+        topics.forEach(t => { tMap[String(t.id)] = t; });
+
+        Object.keys(allPhrases).forEach(tid => {
+          const t = tMap[tid] || {};
+          (allPhrases[tid] || []).forEach(p => {
+            if (
+              (p.q_text && p.q_text.toLowerCase().includes(q)) ||
+              (p.q_vi && p.q_vi.toLowerCase().includes(q)) ||
+              (p.a_text && p.a_text.toLowerCase().includes(q)) ||
+              (p.a_vi && p.a_vi.toLowerCase().includes(q))
+            ) {
+              results.push({
+                ...p,
+                topic_title: t.title,
+                topic_title_vi: t.title_vi,
+                topic_cartoon: t.cartoon
+              });
+            }
+          });
+        });
+      }
+
+      if (!results.length) {
+        resBox.innerHTML = `
+          <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
+            Không tìm thấy kết quả nào cho "${escapeHtml(query)}"
+          </div>
+        `;
+        return;
+      }
+
+      resBox.innerHTML = `
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:12px;">
+          Tìm thấy ${results.length} câu phù hợp:
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          ${results.slice(0, 50).map(r => `
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                  <span style="font-size:11px;font-weight:800;color:#10b981;background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:6px;">
+                    ${r.topic_cartoon || '💬'} ${r.topic_title || 'Chủ đề'}
+                  </span>
+                </div>
+                <div style="font-size:14px;font-weight:800;color:var(--text-primary);margin-bottom:2px;">
+                  ❓ ${r.q_text}
+                </div>
+                <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px;">
+                  🇻🇳 ${r.q_vi}
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#059669;">
+                  💬 ${r.a_text}
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <button class="btn btn-sm btn-outline" onclick="speakText('${escapeQuotes(r.q_text)}', 'en-US')" title="Nghe câu hỏi">
+                  🔊 Hỏi
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="speakText('${escapeQuotes(r.a_text)}', 'en-US')" title="Nghe câu đáp">
+                  🔊 Đáp
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="closeCPGlobalSearchModal(); openCPTopic(${r.topic_id});" style="font-size:11px;padding:4px 8px;">
+                  Vào chủ đề ➔
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch (e) {
+      console.error('Search error:', e);
+      resBox.innerHTML = '<div style="text-align:center;padding:30px 0;color:#ef4444;">Lỗi khi tra cứu. Vui lòng thử lại.</div>';
+    }
+  }, 250);
+}
+
+// ── UTILITIES ─────────────────────────────────────────────────────────────────
+function escapeQuotes(str) {
+  if (!str) return '';
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Global scope exposures
+window.openCPTopic = openCPTopic;
+window.backToCPTopics = backToCPTopics;
+window.switchCPTab = switchCPTab;
+window.setCPCategory = setCPCategory;
+window.handleCPSearch = handleCPSearch;
+window.clearCPSearch = clearCPSearch;
+window.flipCPCard = flipCPCard;
+window.prevCPCard = prevCPCard;
+window.nextCPCard = nextCPCard;
+window.shuffleCPCards = shuffleCPCards;
+window.playCPCardAudioPair = playCPCardAudioPair;
+window.selectCPReflexOption = selectCPReflexOption;
+window.nextCPReflexQuestion = nextCPReflexQuestion;
+window.initCPReflexQuiz = initCPReflexQuiz;
+window.toggleCPBookmark = toggleCPBookmark;
+window.playAllPhrasesInTopic = playAllPhrasesInTopic;
+window.startCPMicPractice = startCPMicPractice;
+window.stopCPMicPractice = stopCPMicPractice;
+window.openCPGlobalSearchModal = openCPGlobalSearchModal;
+window.closeCPGlobalSearchModal = closeCPGlobalSearchModal;
+window.executeCPGlobalSearch = executeCPGlobalSearch;

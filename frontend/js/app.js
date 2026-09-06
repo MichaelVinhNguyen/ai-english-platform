@@ -543,6 +543,24 @@ function updateUserUI() {
 
 // ── LOGIN FORM & QUICK EMAIL LOGIN ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // 4D Hero Stage Interactive 3D Parallax Tilt Effect
+  const authShowcase = document.querySelector('.auth-hero-showcase');
+  const authCard4D = document.querySelector('.auth-4d-card-levitate');
+  if (authShowcase && authCard4D) {
+    authShowcase.addEventListener('mousemove', (e) => {
+      const rect = authShowcase.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotateY = (x / (rect.width / 2)) * 14;
+      const rotateX = -(y / (rect.height / 2)) * 14;
+      authCard4D.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(1)}deg) rotateY(${rotateY.toFixed(1)}deg) translateY(-8px)`;
+    });
+
+    authShowcase.addEventListener('mouseleave', () => {
+      authCard4D.style.transform = '';
+    });
+  }
+
   // 1. Quick Email Login Handler (Passwordless / Instant access)
   const quickEmailForm = document.getElementById('quick-email-form');
   if (quickEmailForm) {
@@ -3941,123 +3959,186 @@ registerView('flashcards', () => `
       </div>
     </div>
 
-    <!-- PANEL 2: INTERACTIVE STUDY PLAYER (3D FLIP / QUIZ / SPELLING) -->
+    <!-- PANEL 2: INTERACTIVE STUDY PLAYER (4D SMART FLASHCARD) -->
     <div id="flashcards-panel-player" class="module-panel" style="display:none">
       <div class="flashcard-player-hero">
+        
+        <!-- HEADER ROW -->
         <div class="flashcard-deck-header">
           <div style="display:flex;align-items:center;gap:12px">
-            <button class="btn btn-secondary btn-sm" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="border-radius:10px">
-              ← Danh sách chủ đề
+            <button class="btn btn-secondary btn-sm" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="border-radius:10px;font-weight:700">
+              ← Danh Sách Chủ Đề
             </button>
             <div>
-              <div id="player-deck-title" style="font-weight:800;font-size:16px;color:var(--text-primary)">CEFR A2</div>
-              <div id="player-deck-progress-text" style="font-size:12px;color:var(--text-secondary)">Thẻ 1 / 50</div>
+              <div id="player-deck-title" style="font-weight:800;font-size:17px;color:var(--text-primary)">Daily Life & Routines</div>
+              <div id="player-deck-progress-text" style="font-size:12.5px;color:var(--text-secondary);font-weight:600">Thẻ 1 / 50 (2%)</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="badge badge-purple" id="player-study-mode-badge">🎴 Lật Thẻ 3D</span>
-            <button class="btn btn-secondary btn-sm" onclick="toggleShuffleCurrentDeck()" title="Xáo trộn thứ tự thẻ">🔀</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="openDeckWordListModal()" title="Xem toàn bộ 50 từ trong bộ thẻ" style="border-radius:10px;font-weight:700;display:flex;align-items:center;gap:6px">
+              📋 <span>50 Từ Vựng</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleShuffleCurrentDeck()" title="Xáo trộn thứ tự 50 thẻ" style="border-radius:10px;font-weight:700">
+              🔀 Xáo Trộn
+            </button>
+            <span class="badge badge-purple" id="player-study-mode-badge" style="border-radius:10px;padding:6px 12px;font-weight:800">🎴 Lật Thẻ 4D</span>
           </div>
         </div>
 
-        <!-- LANGUAGE FLIP MODE TOGGLE -->
-        <div class="flashcard-lang-toggle-bar">
-          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">🔄 Chiều học:</span>
-          <button id="fc-lang-btn-en-vi" class="fc-lang-btn active" onclick="setFlashcardLangMode('en_to_vi')">🇬🇧 Anh ➔ 🇻🇳 Việt</button>
-          <button id="fc-lang-btn-vi-en" class="fc-lang-btn" onclick="setFlashcardLangMode('vi_to_en')">🇻🇳 Việt ➔ 🇬🇧 Anh</button>
+        <!-- PROGRESS BAR -->
+        <div class="fc-progress-container" style="height:8px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin:14px 0 10px 0;position:relative">
+          <div id="player-top-progress-fill" style="height:100%;width:2%;background:linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);border-radius:10px;transition:width 0.35s cubic-bezier(0.4, 0, 0.2, 1);box-shadow:0 0 12px rgba(139,92,246,0.5)"></div>
         </div>
 
-        <!-- MODE TABS (Flip, Quiz, Spelling) -->
-        <div class="flashcard-mode-tabs">
-          <button id="mode-tab-flip" class="fc-mode-tab active" onclick="setPlayerStudyMode('flip')">🎴 Lật Thẻ 3D Chi Tiết</button>
+        <!-- QUICK 50-CARD JUMP MATRIX / NUMBER STRIP -->
+        <div class="fc-jump-strip-container" id="fc-jump-strip-container">
+          <div class="fc-jump-strip-label">⚡ Chuyển nhanh 50 từ:</div>
+          <div class="fc-jump-strip" id="fc-jump-strip">
+            <!-- Rendered dynamically: 1..50 -->
+          </div>
+        </div>
+
+        <!-- STUDY MODES TABS -->
+        <div class="flashcard-mode-tabs" style="margin-top:14px;margin-bottom:14px">
+          <button id="mode-tab-flip" class="fc-mode-tab active" onclick="setPlayerStudyMode('flip')">🎴 Lật Thẻ 4D Chi Tiết</button>
           <button id="mode-tab-quiz" class="fc-mode-tab" onclick="setPlayerStudyMode('quiz')">🎯 Trắc Nghiệm Nhanh</button>
           <button id="mode-tab-spelling" class="fc-mode-tab" onclick="setPlayerStudyMode('spelling')">✍️ Gõ Từ Chính Tả</button>
         </div>
 
-        <!-- PROGRESS BAR -->
-        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;margin-bottom:20px">
-          <div id="player-top-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg, #6366f1, #8b5cf6);border-radius:10px;transition:width 0.3s ease"></div>
-        </div>
-
-        <!-- 1. FLIP CARD MODE (GLENN DOMAN 3D CARTOON SMART CARD) -->
+        <!-- 1. FLIP CARD MODE -->
         <div id="player-mode-flip-wrap">
-          <!-- CARD NAVIGATION TOOLBAR -->
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary btn-sm" onclick="prevFlashcard()" style="border-radius:12px;font-weight:700">⬅️ Từ trước</button>
-              <button class="btn btn-primary btn-sm" onclick="nextFlashcard()" style="border-radius:12px;font-weight:700">Từ tiếp theo ➡️</button>
+          
+          <!-- SECONDARY QUICK TOOLS (Audio, Slow, Mic, Star, Auto-Play) -->
+          <div class="fc-quick-tools-row">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="fc-tool-pill" onclick="speakActiveWord(1.0)" title="Phát âm giọng bản xứ chuẩn 1.0x">
+                🔊 Nghe Chuẩn (1.0x)
+              </button>
+              <button class="fc-tool-pill" onclick="speakActiveWordSlow()" title="Phát âm chậm 0.75x để nghe rõ từng âm IPA">
+                🐢 Phát Âm Chậm (0.75x)
+              </button>
+              <button class="fc-tool-pill" onclick="practiceActiveWordSpeech()" title="Luyện đọc qua Micro nhận diện AI">
+                🎙️ Luyện Đọc AI
+              </button>
+              <button id="card-bookmark-btn" class="fc-tool-pill" onclick="toggleBookmarkActiveWord()" title="Lưu từ vào danh sách yêu thích">
+                ⭐ Lưu Từ
+              </button>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-secondary btn-sm" onclick="speakActiveWord()" style="border-radius:12px;font-weight:700">🔊 Phát âm mẫu</button>
-              <button class="btn btn-ghost btn-sm" id="btn-autoplay-flashcard" onclick="toggleAutoPlayFlashcard()" style="border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,0.15)">⚡ Tự động chạy: TẮT</button>
+            <div>
+              <button class="btn btn-ghost btn-sm" id="btn-autoplay-flashcard" onclick="toggleAutoPlayFlashcard()" style="border-radius:12px;font-weight:700;border:1px solid rgba(255,255,255,0.18)">
+                ⚡ Tự động chạy: TẮT
+              </button>
             </div>
           </div>
 
-          <div class="flashcard-3d-scene" onclick="flipActiveCard()">
-            <div class="flashcard-3d-card" id="main-3d-flashcard">
-              <!-- FRONT: GLENN DOMAN STYLE (RED VIETNAMESE + ENGLISH + IPA + CUTE 3D CARTOON) -->
-              <div class="flashcard-side front glenn-doman-front" style="background:#ffffff;border:2px solid #e2e8f0;color:#0f172a;text-align:center;display:flex;flex-direction:column;justify-content:space-between;padding:24px;border-radius:24px;box-shadow:0 15px 40px rgba(0,0,0,0.08)">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span class="badge" id="card-level-badge" style="background:#ede9fe;color:#7c3aed;font-weight:800;border-radius:20px;padding:4px 12px">A1</span>
-                  <span class="badge" id="card-type-label" style="background:#cffafe;color:#0891b2;font-weight:800;border-radius:20px;padding:4px 12px">Hành động • Verb</span>
-                </div>
+          <!-- 4D FLASHCARD STAGE WITH FLOATING SIDE ARROWS -->
+          <div class="flashcard-stage-container">
+            <button class="fc-stage-nav fc-stage-prev" onclick="prevFlashcard()" title="Từ trước (Phím Mũi tên Trái ⬅️)">
+              <span>‹</span>
+            </button>
 
-                <!-- MAIN WORD CONTENT -->
-                <div style="margin: 10px 0;">
-                  <div id="player-card-vi-top" style="color:#dc2626;font-size:32px;font-weight:900;letter-spacing:-0.5px;margin-bottom:6px">Đánh răng</div>
-                  <div id="player-card-word" style="color:#0f172a;font-size:28px;font-weight:800;margin-bottom:4px">Brush teeth</div>
-                  <div id="player-card-ipa" style="color:#475569;font-size:18px;font-family:monospace;font-weight:600">[ brʌʃ tiːθ ]</div>
-                </div>
-
-                <!-- 3D CARTOON ILLUSTRATION -->
-                <div class="glenn-cartoon-wrap" style="height:190px;width:100%;display:flex;align-items:center;justify-content:center;margin:8px 0;background:#f8fafc;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0">
-                  <img id="player-card-img-front" src="/assets/login_hero_3d.jpg" alt="3D Cartoon Illustration" style="max-height:175px;max-width:90%;object-fit:contain;transition:transform 0.3s ease" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=learn'">
-                </div>
-
-                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:6px">
-                  <span>👆 Nhấn vào thẻ để lật xem ví dụ & mẹo nhớ</span>
-                  <button class="btn btn-sm btn-ghost" style="color:#7c3aed;font-weight:700;padding:2px 8px" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe lại</button>
-                </div>
-              </div>
-
-              <!-- BACK: DETAILS + BILINGUAL EXAMPLE + MNEMONIC MEMORY HOOK -->
-              <div class="flashcard-side back" style="background:#ffffff;border:2px solid #c4b5fd;color:#0f172a;border-radius:24px;padding:24px;box-shadow:0 15px 40px rgba(124,58,237,0.12)">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                  <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:800;border-radius:20px;padding:4px 12px">📖 Nghĩa & Ví Dụ Ngữ Cảnh</span>
-                  <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWord()">🔊 Nghe phát âm</button>
-                </div>
-
-                <div>
-                  <div id="player-card-vi" style="font-size:24px;font-weight:800;color:#dc2626;margin-bottom:4px">Đánh răng</div>
-                  <div id="player-card-en" style="font-size:14px;color:#334155;margin-bottom:14px;line-height:1.5">Clean one's teeth using a toothbrush and toothpaste.</div>
-                  
-                  <!-- BILINGUAL EXAMPLE -->
-                  <div class="card-bilingual-example" id="player-card-bilingual-example" style="background:#f1f5f9;border-left:4px solid #8b5cf6;padding:12px 16px;border-radius:10px;margin-bottom:12px">
-                    <div class="card-example-en" id="player-card-ex-en" style="font-size:14.5px;font-weight:700;color:#0f172a">"Remember to brush your teeth before going to bed."</div>
-                    <div class="card-example-vi" id="player-card-ex-vi" style="font-size:13px;color:#475569;margin-top:4px">Hãy nhớ đánh răng trước khi đi ngủ.</div>
+            <div class="flashcard-3d-scene" onclick="flipActiveCard()">
+              <div class="flashcard-3d-card" id="main-3d-flashcard">
+                
+                <!-- FRONT SIDE: 4D GLENN DOMAN HIGH CONTRAST -->
+                <div class="flashcard-side front glenn-doman-front">
+                  <!-- Front Top Badge Row -->
+                  <div class="fc-front-badge-row">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" id="card-level-badge" style="background:#ede9fe;color:#7c3aed;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">A1</span>
+                      <span class="badge" id="card-type-label" style="background:#cffafe;color:#0891b2;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">Noun • Daily Life</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span id="card-idx-badge" class="badge" style="background:#f1f5f9;color:#475569;font-weight:800;border-radius:20px;padding:4px 10px;font-size:11px">1/50</span>
+                    </div>
                   </div>
 
-                  <!-- MNEMONIC TIP -->
-                  <div class="card-mnemonic-box" id="player-card-mnemonic-box" style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px">
-                    💡 <strong>Mẹo nhớ từ:</strong> <em>"Brush"</em> là bàn chải / chải, <em>"Teeth"</em> là những chiếc răng ➔ chải răng = đánh răng!
+                  <!-- Front Word Content -->
+                  <div class="fc-front-word-center">
+                    <div id="player-card-vi-top" class="fc-front-vi-title">Đánh răng</div>
+                    <div id="player-card-word" class="fc-front-en-word">Brush teeth</div>
+                    <div class="fc-front-ipa-wrap">
+                      <span id="player-card-ipa" class="fc-front-ipa-text">[ brʌʃ tiːθ ]</span>
+                      <button class="fc-mini-audio-btn" onclick="event.stopPropagation();speakActiveWord()" title="Nghe phát âm">🔊</button>
+                    </div>
                   </div>
 
-                  <!-- COLLOCATIONS & SYNONYMS -->
-                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <span style="font-size:11.5px;color:#64748b;font-weight:700">Cụm từ liên quan:</span>
-                    <div id="player-card-collocations" class="card-tags-list"></div>
+                  <!-- 4D / 3D Illustration Container -->
+                  <div class="glenn-cartoon-wrap">
+                    <img id="player-card-img-front" src="/assets/login_hero_4d.jpg" alt="Illustration" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=learn'">
+                    <div class="glenn-cartoon-glass-overlay"></div>
+                  </div>
+
+                  <!-- Front Footer Hint -->
+                  <div class="fc-front-footer-hint">
+                    <span class="fc-flip-hint-pill">🔄 Nhấn vào thẻ hoặc phím [Space] để lật xem ví dụ & mẹo</span>
                   </div>
                 </div>
 
-                <div style="font-size:11.5px;color:#64748b;text-align:center;margin-top:10px">
-                  🔄 Bấm vào thẻ để quay lại mặt trước
+                <!-- BACK SIDE: DETAILS, DEFINITIONS, BILINGUAL EXAMPLES, MNEMONIC -->
+                <div class="flashcard-side back">
+                  <div class="fc-back-header-row">
+                    <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:800;border-radius:20px;padding:4px 12px;font-size:12px">📖 Nghĩa & Ví Dụ Ngữ Cảnh</span>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWord(1.0)">🔊 1.0x</button>
+                      <button class="btn btn-sm btn-secondary" style="border-radius:20px;font-size:11px;font-weight:700" onclick="event.stopPropagation();speakActiveWordSlow()">🐢 0.8x</button>
+                    </div>
+                  </div>
+
+                  <div class="fc-back-content-scroll">
+                    <div id="player-card-vi" class="fc-back-vi-title">Đánh răng</div>
+                    <div id="player-card-en" class="fc-back-en-def">Clean one's teeth using a toothbrush and toothpaste.</div>
+                    
+                    <!-- BILINGUAL EXAMPLE -->
+                    <div class="card-bilingual-example" id="player-card-bilingual-example">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <span style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase">Ví dụ thực tế:</span>
+                        <button class="fc-mini-audio-btn" onclick="event.stopPropagation();speakExampleSentence()" title="Nghe câu ví dụ">🔊</button>
+                      </div>
+                      <div class="card-example-en" id="player-card-ex-en">"Remember to brush your teeth before going to bed."</div>
+                      <div class="card-example-vi" id="player-card-ex-vi">Hãy nhớ đánh răng trước khi đi ngủ.</div>
+                    </div>
+
+                    <!-- MNEMONIC TIP -->
+                    <div class="card-mnemonic-box" id="player-card-mnemonic-box">
+                      💡 <strong>Mẹo nhớ từ:</strong> <em>"Brush"</em> là bàn chải, <em>"Teeth"</em> là răng ➔ chải răng = đánh răng!
+                    </div>
+
+                    <!-- COLLOCATIONS -->
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+                      <span style="font-size:11.5px;color:#64748b;font-weight:700">Cụm từ liên quan:</span>
+                      <div id="player-card-collocations" class="card-tags-list"></div>
+                    </div>
+                  </div>
+
+                  <div class="fc-back-footer-hint">
+                    🔄 Nhấn vào thẻ để quay lại mặt trước
+                  </div>
                 </div>
+
               </div>
             </div>
+
+            <button class="fc-stage-nav fc-stage-next" onclick="nextFlashcard()" title="Từ tiếp theo (Phím Mũi tên Phải ➡️)">
+              <span>›</span>
+            </button>
+          </div>
+
+          <!-- PRIMARY HERO CONTROL BUTTONS BAR -->
+          <div class="flashcard-main-controls-bar">
+            <button class="btn btn-secondary fc-btn-prev" onclick="prevFlashcard()" title="Quay lại từ trước (Phím ⬅️)">
+              ⬅️ Từ trước [ ⬅️ ]
+            </button>
+            <button class="btn btn-secondary fc-btn-flip" onclick="flipActiveCard()" title="Lật thẻ qua lại (Phím Cách / Space)">
+              🔄 Lật thẻ [ Space ]
+            </button>
+            <button class="btn btn-primary fc-btn-next" onclick="nextFlashcard()" title="Chuyển sang từ tiếp theo (Phím ➡️)">
+              Từ tiếp theo ➡️ [ ➡️ ]
+            </button>
           </div>
 
           <!-- SRS 4 BUTTONS -->
-          <div id="srs-actions-panel" style="display:block;margin-top:16px">
+          <div id="srs-actions-panel" style="display:block;margin-top:20px">
             <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:10px">
               Đánh giá mức độ ghi nhớ (Thuật toán SuperMemo SM-2):
             </div>
@@ -4080,6 +4161,7 @@ registerView('flashcards', () => `
               </button>
             </div>
           </div>
+
         </div>
 
         <!-- 2. QUIZ MODE -->
@@ -4110,18 +4192,21 @@ registerView('flashcards', () => `
         </div>
 
         <!-- FINISHED CELEBRATION VIEW -->
-        <div id="player-deck-finished" class="card" style="display:none;text-align:center;padding:40px">
-          <div style="font-size:54px;margin-bottom:12px">🎉</div>
-          <div style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:8px">Tuyệt vời! Bạn đã hoàn thành bộ thẻ</div>
-          <p style="color:var(--text-secondary);font-size:14px;margin-bottom:24px">Tất cả các từ đã được ghi nhận vào lịch ôn tập ngắt quãng (SM-2).</p>
-          <div style="display:flex;gap:12px;justify-content:center">
-            <button class="btn btn-primary" onclick="restartCurrentDeck()">🔄 Học lại bộ này</button>
-            <button class="btn btn-secondary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))">🏷️ Chọn chủ đề khác</button>
+        <div id="player-deck-finished" class="card" style="display:none;text-align:center;padding:44px 24px;background:linear-gradient(145deg, rgba(22,27,34,0.95), rgba(13,17,23,0.98));border:2px solid rgba(139,92,246,0.3);box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+          <div style="font-size:64px;margin-bottom:12px;animation:pulse 2s infinite">🎉</div>
+          <div style="font-size:26px;font-weight:900;color:var(--text-primary);margin-bottom:8px">Xuất Sắc! Hoàn Thành Trọn Bộ 50 Từ!</div>
+          <p style="color:var(--text-secondary);font-size:15px;margin-bottom:24px;max-width:520px;margin-left:auto;margin-right:auto">
+            Bạn vừa hoàn thành toàn bộ 50 từ vựng chuyên sâu của chủ đề này và nhận được <strong>+50 XP</strong>. Toàn bộ từ vựng đã được lên lịch ôn tập thông minh (SM-2).
+          </p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="restartCurrentDeck()" style="font-weight:800;border-radius:12px;padding:12px 24px">🔄 Học Lại Bộ 50 Từ Này</button>
+            <button class="btn btn-secondary" onclick="setPlayerStudyMode('quiz')" style="font-weight:800;border-radius:12px;padding:12px 24px">🎯 Thử Thách Trắc Nghiệm 50 Từ</button>
+            <button class="btn btn-secondary" onclick="switchFlashcardSubTab('topics', document.getElementById('fc-tab-topics'))" style="font-weight:800;border-radius:12px;padding:12px 24px">🏷️ Chọn Chủ Đề Khác</button>
           </div>
         </div>
+
       </div>
     </div>
-
     <!-- PANEL 3: SRS DUE REVIEWS -->
     <div id="flashcards-panel-due" class="module-panel" style="display:none">
       <div class="card" style="max-width:600px;margin:0 auto;text-align:center;padding:32px">
@@ -4485,29 +4570,53 @@ window.selectAndStartTopic = async (topicId, queryType, queryValue, displayTitle
   }
 };
 
+let flashcardAutoPlayTimer = null;
+let isFlashcardAutoPlaying = false;
+
 window.startTopicStudy = async (topicName, displayTitle) => {
   try {
     const title = displayTitle || topicName;
-    toast(`Đang tải từ vựng: ${title}...`, 'info');
+    toast(`Đang tải 50 từ vựng: ${title}...`, 'info');
     const res = await api.vocabulary.flashcardDeck({ topic: topicName, limit: 50, shuffle: false });
-    if (!res.cards || !res.cards.length) {
-      toast('Đang nạp từ vựng dự phòng theo chủ đề...', 'info');
-      const fallbackRes = await api.vocabulary.flashcardDeck({ limit: 50, shuffle: true });
-      if (!fallbackRes.cards || !fallbackRes.cards.length) {
-        toast('Không tìm thấy thẻ nào cho chủ đề này.', 'warning');
-        return;
+    let cards = (res && res.cards) ? res.cards : [];
+
+    // Deduplicate cards by lowercase word
+    const seen = new Set();
+    const uniqueCards = [];
+    for (const c of cards) {
+      const w = (c.word || '').trim().toLowerCase();
+      if (w && !seen.has(w)) {
+        seen.add(w);
+        uniqueCards.push(c);
       }
-      res.cards = fallbackRes.cards;
     }
-    state.currentFlashcardDeck = res.cards;
+
+    // Guarantee 50 distinct items from fallback or vocabulary pool if needed
+    if (uniqueCards.length < 50) {
+      const fcMap = window.STANDALONE_DATA?.flashcards || {};
+      const allTopicCards = [];
+      Object.values(fcMap).forEach(arr => allTopicCards.push(...arr));
+      const pool = [...(window.STANDALONE_DATA?.vocabularies || []), ...allTopicCards];
+      for (const item of pool) {
+        const w = (item.word || '').trim().toLowerCase();
+        if (w && !seen.has(w)) {
+          seen.add(w);
+          uniqueCards.push(item);
+          if (uniqueCards.length >= 50) break;
+        }
+      }
+    }
+
+    state.currentFlashcardDeck = uniqueCards.slice(0, 50);
     state.currentDeckTitle = title;
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
-    // Switch to player tab
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = title;
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = title;
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(`Lỗi tải bộ thẻ: ${e.message}`, 'error');
@@ -4516,21 +4625,45 @@ window.startTopicStudy = async (topicName, displayTitle) => {
 
 window.loadCefrDeck = async (level, displayTitle) => {
   try {
-    const title = displayTitle || `CEFR Level ${level}`;
-    toast(`Đang tải từ vựng khung chuẩn ${title}...`, 'info');
+    const title = displayTitle || `Khung Chuẩn CEFR ${level}`;
+    toast(`Đang tải 50 từ vựng ${title}...`, 'info');
     const res = await api.vocabulary.flashcardDeck({ level, limit: 50, shuffle: true });
-    if (!res.cards || !res.cards.length) {
-      toast('Không có từ vựng cho cấp độ này.', 'warning');
-      return;
+    let cards = (res && res.cards) ? res.cards : [];
+
+    const seen = new Set();
+    const uniqueCards = [];
+    for (const c of cards) {
+      const w = (c.word || '').trim().toLowerCase();
+      if (w && !seen.has(w)) {
+        seen.add(w);
+        uniqueCards.push(c);
+      }
     }
-    state.currentFlashcardDeck = res.cards;
+
+    if (uniqueCards.length < 50) {
+      const pool = (window.STANDALONE_DATA?.vocabularies || []).filter(v => (v.level || '').toUpperCase() === level.toUpperCase());
+      const fcMap = window.STANDALONE_DATA?.flashcards || {};
+      Object.values(fcMap).forEach(arr => pool.push(...arr));
+      for (const item of pool) {
+        const w = (item.word || '').trim().toLowerCase();
+        if (w && !seen.has(w)) {
+          seen.add(w);
+          uniqueCards.push(item);
+          if (uniqueCards.length >= 50) break;
+        }
+      }
+    }
+
+    state.currentFlashcardDeck = uniqueCards.slice(0, 50);
     state.currentDeckTitle = title;
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = title;
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = title;
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(e.message, 'error');
@@ -4544,23 +4677,21 @@ window.loadDueFlashcardsDeck = async () => {
       toast('Tuyệt vời! Bạn đã hoàn thành tất cả thẻ cần ôn hôm nay.', 'success');
       return;
     }
-    state.currentFlashcardDeck = cards;
+    state.currentFlashcardDeck = cards.slice(0, 50);
     state.currentDeckTitle = "SRS Due Reviews (Cần ôn hôm nay)";
     state.flashcardIndex = 0;
     state.flashcardReviewed = 0;
 
     switchFlashcardSubTab('player', document.getElementById('fc-tab-player'));
-    document.getElementById('player-deck-title').textContent = "Hôm nay cần ôn tập (SRS)";
-    document.getElementById('player-deck-finished').style.display = 'none';
+    const titleEl = document.getElementById('player-deck-title');
+    if (titleEl) titleEl.textContent = "Hôm nay cần ôn tập (SRS)";
+    const fin = document.getElementById('player-deck-finished');
+    if (fin) fin.style.display = 'none';
     renderActiveFlashcard();
   } catch(e) {
     toast(e.message, 'error');
   }
 };
-
-
-let flashcardAutoPlayTimer = null;
-let isFlashcardAutoPlaying = false;
 
 window.renderActiveFlashcard = () => {
   const deck = state.currentFlashcardDeck || [];
@@ -4585,7 +4716,7 @@ window.renderActiveFlashcard = () => {
     return;
   }
 
-  // Check if finished
+  // Check if finished entire deck
   if (state.flashcardIndex >= deck.length) {
     if (isFlashcardAutoPlaying) toggleAutoPlayFlashcard();
     if (finishedElem) finishedElem.style.display = 'block';
@@ -4604,13 +4735,39 @@ window.renderActiveFlashcard = () => {
   const card = deck[state.flashcardIndex];
   const total = deck.length;
   const currentNum = state.flashcardIndex + 1;
+  const percent = Math.round((currentNum / total) * 100);
 
-  // Update Progress
+  // Update Progress text & fill
   const progressText = document.getElementById('player-deck-progress-text');
-  if (progressText) progressText.textContent = `Từ ${currentNum} / ${total}`;
+  if (progressText) progressText.textContent = `Thẻ ${currentNum} / ${total} (${percent}%)`;
 
   const progressFill = document.getElementById('player-top-progress-fill');
-  if (progressFill) progressFill.style.width = `${(currentNum / total) * 100}%`;
+  if (progressFill) progressFill.style.width = `${percent}%`;
+
+  // Render 50-card jump strip
+  const jumpStrip = document.getElementById('fc-jump-strip');
+  if (jumpStrip) {
+    jumpStrip.innerHTML = deck.map((c, i) => {
+      const isActive = i === state.flashcardIndex;
+      const isDone = i < state.flashcardIndex;
+      return `<button class="fc-jump-chip ${isActive ? 'active' : (isDone ? 'done' : '')}" onclick="jumpToFlashcard(${i})" title="${i + 1}. ${c.word} (${c.definition_vi || ''})">${i + 1}</button>`;
+    }).join('');
+
+    // Smooth scroll active chip into view
+    const activeChip = jumpStrip.querySelector('.fc-jump-chip.active');
+    if (activeChip && activeChip.scrollIntoView) {
+      activeChip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }
+
+  // Bookmark star state
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarked_flashcards') || '[]');
+  const isBookmarked = bookmarks.some(b => (b.word || '').toLowerCase() === (card.word || '').toLowerCase());
+  const bookmarkBtn = document.getElementById('card-bookmark-btn');
+  if (bookmarkBtn) {
+    bookmarkBtn.classList.toggle('active', isBookmarked);
+    bookmarkBtn.innerHTML = isBookmarked ? '⭐ Đã Lưu' : '☆ Lưu Từ';
+  }
 
   const studyMode = state.flashcardStudyMode || 'flip';
 
@@ -4619,41 +4776,47 @@ window.renderActiveFlashcard = () => {
     if (quizWrap) quizWrap.style.display = 'none';
     if (spellingWrap) spellingWrap.style.display = 'none';
 
-    // Set Level and Type Badges
+    // Badges
     const lvlBadge = document.getElementById('card-level-badge');
     if (lvlBadge) lvlBadge.textContent = card.level || 'A1';
 
     const typeBadge = document.getElementById('card-type-label');
     if (typeBadge) typeBadge.textContent = `${card.word_type || 'noun'} • ${card.topic || 'Từ vựng'}`;
 
-    // Set Vietnamese Meaning in Red (Top)
+    const idxBadge = document.getElementById('card-idx-badge');
+    if (idxBadge) idxBadge.textContent = `${currentNum} / ${total}`;
+
+    // Front Content
     const viTop = document.getElementById('player-card-vi-top');
     if (viTop) viTop.textContent = card.definition_vi || 'Nghĩa tiếng Việt';
 
-    // Set English Word (Middle)
     const enWord = document.getElementById('player-card-word');
     if (enWord) enWord.textContent = card.word || '';
 
-    // Set Phonetic IPA
     const ipaElem = document.getElementById('player-card-ipa');
     if (ipaElem) ipaElem.textContent = card.ipa ? `[ ${card.ipa} ]` : `[ /${card.word}/ ]`;
 
-    // 3D / Cartoon Illustration
+    // 4D Illustration
     const imgFront = document.getElementById('player-card-img-front');
     if (imgFront) {
-      const cartoonSeed = encodeURIComponent(card.word || 'english');
-      const fallbackUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${cartoonSeed}`;
-      imgFront.src = card.image_url || fallbackUrl;
+      if (card.image_url) {
+        imgFront.src = card.image_url;
+      } else if (TOPIC_IMAGE_MAP && TOPIC_IMAGE_MAP[card.topic]) {
+        imgFront.src = TOPIC_IMAGE_MAP[card.topic];
+      } else {
+        const seed = encodeURIComponent(card.word || 'learn');
+        imgFront.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
+      }
     }
 
-    // Set Back face details
+    // Back Face Content
     const viBack = document.getElementById('player-card-vi');
     if (viBack) viBack.textContent = card.definition_vi || '';
 
     const enBack = document.getElementById('player-card-en');
     if (enBack) enBack.textContent = card.definition_en || 'English definition...';
 
-    // Contextual Bilingual Example
+    // Bilingual Example
     const exEn = document.getElementById('player-card-ex-en');
     const exVi = document.getElementById('player-card-ex-vi');
     let exampleEnText = `"${card.word} is very important for daily English communication."`;
@@ -4676,13 +4839,13 @@ window.renderActiveFlashcard = () => {
     if (exEn) exEn.textContent = exampleEnText;
     if (exVi) exVi.textContent = exampleViText;
 
-    // Mnemonic memory tip
+    // Mnemonic Memory Box
     const mnemonicBox = document.getElementById('player-card-mnemonic-box');
     if (mnemonicBox) {
       mnemonicBox.innerHTML = `💡 <strong>Mẹo nhớ từ:</strong> Hãy liên tưởng từ <em>"${card.word}"</em> (${card.definition_vi || ''}) với hình ảnh minh họa để khắc sâu vào trí nhớ dài hạn.`;
     }
 
-    // Collocations and synonyms tags
+    // Collocations
     const collocElem = document.getElementById('player-card-collocations');
     if (collocElem) {
       const tags = [];
@@ -4743,6 +4906,11 @@ window.flipActiveCard = () => {
 window.nextFlashcard = () => {
   const deck = state.currentFlashcardDeck || [];
   if (!deck.length) return;
+
+  // Unflip card immediately so next word is displayed from the front
+  const cardElem = document.getElementById('main-3d-flashcard');
+  if (cardElem) cardElem.classList.remove('flipped');
+
   if (state.flashcardIndex < deck.length - 1) {
     state.flashcardIndex++;
     renderActiveFlashcard();
@@ -4750,15 +4918,174 @@ window.nextFlashcard = () => {
   } else {
     state.flashcardIndex = deck.length;
     renderActiveFlashcard();
+    if (typeof window.showXPPopup === 'function') window.showXPPopup(50);
+    toast('🎉 Tuyệt vời! Bạn đã hoàn thành toàn bộ 50 từ trong bộ thẻ! (+50 XP)', 'success');
   }
 };
 
 window.prevFlashcard = () => {
+  const deck = state.currentFlashcardDeck || [];
+  if (!deck.length) return;
+
+  const cardElem = document.getElementById('main-3d-flashcard');
+  if (cardElem) cardElem.classList.remove('flipped');
+
   if (state.flashcardIndex > 0) {
     state.flashcardIndex--;
     renderActiveFlashcard();
     speakActiveWord();
+  } else {
+    toast('Đây là từ đầu tiên trong bộ 50 từ!', 'info');
   }
+};
+
+window.jumpToFlashcard = (idx) => {
+  const deck = state.currentFlashcardDeck || [];
+  if (idx >= 0 && idx < deck.length) {
+    const cardElem = document.getElementById('main-3d-flashcard');
+    if (cardElem) cardElem.classList.remove('flipped');
+    state.flashcardIndex = idx;
+    closeDeckWordListModal();
+    renderActiveFlashcard();
+    speakActiveWord();
+  }
+};
+
+window.speakActiveWord = (rate = 0.9) => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card || !card.word) return;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(card.word);
+    utterance.lang = 'en-US';
+    utterance.rate = rate;
+    window.speechSynthesis.speak(utterance);
+  } else if (typeof window.speakText === 'function') {
+    window.speakText(card.word);
+  }
+};
+
+window.speakActiveWordSlow = () => {
+  window.speakActiveWord(0.72);
+};
+
+window.speakExampleSentence = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card) return;
+  let text = document.getElementById('player-card-ex-en')?.textContent || '';
+  text = text.replace(/["']/g, '').trim();
+  if (text && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
+window.practiceActiveWordSpeech = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card || !card.word) return;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    toast('Trình duyệt của bạn chưa hỗ trợ Web Speech API. Hãy sử dụng Chrome hoặc Edge để luyện đọc!', 'warning');
+    return;
+  }
+  const rec = new SpeechRec();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  toast(`🎙️ Đang lắng nghe... Hãy phát âm từ: "${card.word}"`, 'info');
+  rec.onresult = (e) => {
+    const transcript = (e.results[0][0].transcript || '').trim().toLowerCase();
+    const target = (card.word || '').trim().toLowerCase();
+    if (transcript.includes(target) || target.includes(transcript)) {
+      toast(`🎉 Xuất sắc! Phát âm rất chuẩn: "${card.word}" (Độ chính xác 100%)`, 'success');
+      if (typeof window.showXPPopup === 'function') window.showXPPopup(10);
+    } else {
+      toast(`AI đã nghe: "${transcript}". Hãy thử lại phát âm: "${card.word}" nhé!`, 'info');
+    }
+  };
+  rec.onerror = () => {
+    toast('Chưa nhận diện được giọng nói, vui lòng thử lại!', 'warning');
+  };
+  rec.start();
+};
+
+window.toggleBookmarkActiveWord = () => {
+  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
+  if (!card) return;
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarked_flashcards') || '[]');
+  const idx = bookmarks.findIndex(b => (b.word || '').toLowerCase() === (card.word || '').toLowerCase());
+  const bookmarkBtn = document.getElementById('card-bookmark-btn');
+  if (idx >= 0) {
+    bookmarks.splice(idx, 1);
+    toast(`Đã bỏ lưu từ "${card.word}" khỏi yêu thích.`, 'info');
+    if (bookmarkBtn) {
+      bookmarkBtn.classList.remove('active');
+      bookmarkBtn.innerHTML = '☆ Lưu Từ';
+    }
+  } else {
+    bookmarks.push(card);
+    toast(`⭐ Đã lưu từ "${card.word}" vào kho từ yêu thích!`, 'success');
+    if (bookmarkBtn) {
+      bookmarkBtn.classList.add('active');
+      bookmarkBtn.innerHTML = '⭐ Đã Lưu';
+    }
+  }
+  localStorage.setItem('bookmarked_flashcards', JSON.stringify(bookmarks));
+};
+
+window.openDeckWordListModal = () => {
+  const deck = state.currentFlashcardDeck || [];
+  if (!deck.length) return;
+  let modal = document.getElementById('modal-deck-words-list');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-deck-words-list';
+    modal.className = 'fc-modal-overlay';
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="fc-modal-dialog">
+      <div class="fc-modal-header">
+        <div>
+          <div style="font-size:18px;font-weight:900;color:var(--text-primary)">📋 Trọn Bộ ${deck.length} Từ Vựng: ${state.currentDeckTitle || 'Chủ Đề'}</div>
+          <div style="font-size:12.5px;color:var(--text-secondary)">Bấm vào từ bất kỳ để nhảy ngay tới thẻ đó trong bộ 50 từ</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="closeDeckWordListModal()" style="font-size:18px;font-weight:800;border-radius:50%;width:36px;height:36px">✕</button>
+      </div>
+      <div class="fc-modal-body">
+        <div class="fc-deck-words-grid">
+          ${deck.map((c, i) => {
+            const isCurrent = i === state.flashcardIndex;
+            return `
+              <div class="fc-deck-word-row ${isCurrent ? 'active' : ''}" onclick="jumpToFlashcard(${i})">
+                <div class="fc-deck-word-num">${i + 1}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:800;font-size:14.5px;color:${isCurrent ? '#8b5cf6' : 'var(--text-primary)'}">
+                    ${c.word} <span style="font-size:12px;font-family:monospace;color:#38bdf8;font-weight:400">${c.ipa ? `[${c.ipa}]` : ''}</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${c.definition_vi || ''}
+                  </div>
+                </div>
+                <button class="fc-mini-audio-btn" onclick="event.stopPropagation();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance('${c.word}');u.lang='en-US';speechSynthesis.speak(u);}" title="Nghe phát âm">🔊</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      <div class="fc-modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeDeckWordListModal()" style="border-radius:10px;font-weight:700">Đóng</button>
+      </div>
+    </div>
+  `;
+};
+
+window.closeDeckWordListModal = () => {
+  const modal = document.getElementById('modal-deck-words-list');
+  if (modal) modal.style.display = 'none';
 };
 
 window.toggleAutoPlayFlashcard = () => {
@@ -4769,7 +5096,7 @@ window.toggleAutoPlayFlashcard = () => {
     if (btn) {
       btn.textContent = '⚡ Tự động chạy: TẮT';
       btn.style.color = '';
-      btn.style.borderColor = 'rgba(255,255,255,0.15)';
+      btn.style.borderColor = 'rgba(255,255,255,0.18)';
     }
     toast('Đã dừng tự động chạy thẻ.', 'info');
   } else {
@@ -4794,19 +5121,6 @@ window.toggleAutoPlayFlashcard = () => {
   }
 };
 
-window.speakActiveWord = () => {
-  const card = state.currentFlashcardDeck?.[state.flashcardIndex];
-  if (!card || !card.word) return;
-  if (typeof window.speakText === 'function') {
-    window.speakText(card.word);
-  } else if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(card.word);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  }
-};
-
 window.setFlashcardLangMode = (mode) => {
   state.flashcardLangMode = mode;
   document.getElementById('fc-lang-btn-en-vi')?.classList.toggle('active', mode === 'en_to_vi');
@@ -4819,10 +5133,10 @@ window.setPlayerStudyMode = (mode) => {
   document.getElementById('mode-tab-flip')?.classList.toggle('active', mode === 'flip');
   document.getElementById('mode-tab-quiz')?.classList.toggle('active', mode === 'quiz');
   document.getElementById('mode-tab-spelling')?.classList.toggle('active', mode === 'spelling');
-  
+
   const badge = document.getElementById('player-study-mode-badge');
   if (badge) {
-    badge.textContent = mode === 'flip' ? '🎴 Lật Thẻ 3D' : (mode === 'quiz' ? '🎯 Trắc Nghiệm' : '✍️ Gõ Chính Tả');
+    badge.textContent = mode === 'flip' ? '🎴 Lật Thẻ 4D' : (mode === 'quiz' ? '🎯 Trắc Nghiệm' : '✍️ Gõ Chính Tả');
   }
   renderActiveFlashcard();
 };
@@ -4842,8 +5156,7 @@ window.submitFlashcardSRS = async (rating) => {
   } catch(e) {}
 
   state.flashcardReviewed++;
-  state.flashcardIndex++;
-  renderActiveFlashcard();
+  nextFlashcard();
 };
 
 window.handleQuizAnswer = (btnElem, isCorrect) => {
@@ -4858,8 +5171,7 @@ window.handleQuizAnswer = (btnElem, isCorrect) => {
   }
 
   setTimeout(() => {
-    state.flashcardIndex++;
-    renderActiveFlashcard();
+    nextFlashcard();
   }, 1200);
 };
 
@@ -4876,8 +5188,7 @@ window.checkSpellingAnswer = () => {
     feedbackElem.innerHTML = `<span style="color:#34d399">🎉 Chính xác tuyệt đối: <strong>${card.word}</strong> (+5 XP)</span>`;
     if (typeof window.showXPPopup === 'function') window.showXPPopup(5);
     setTimeout(() => {
-      state.flashcardIndex++;
-      renderActiveFlashcard();
+      nextFlashcard();
     }, 1200);
   } else {
     feedbackElem.innerHTML = `
@@ -4885,8 +5196,7 @@ window.checkSpellingAnswer = () => {
     `;
     speakActiveWord();
     setTimeout(() => {
-      state.flashcardIndex++;
-      renderActiveFlashcard();
+      nextFlashcard();
     }, 2200);
   }
 };
@@ -4895,7 +5205,7 @@ window.toggleShuffleCurrentDeck = () => {
   if (!state.currentFlashcardDeck || !state.currentFlashcardDeck.length) return;
   state.currentFlashcardDeck.sort(() => 0.5 - Math.random());
   state.flashcardIndex = 0;
-  toast('Đã xáo trộn thứ tự thẻ!', 'info');
+  toast('Đã xáo trộn thứ tự 50 thẻ!', 'info');
   renderActiveFlashcard();
 };
 
@@ -4904,6 +5214,39 @@ window.restartCurrentDeck = () => {
   document.getElementById('player-deck-finished').style.display = 'none';
   renderActiveFlashcard();
 };
+
+// Global Keyboard Navigation Listener for Flashcards
+if (!window._flashcardsKeydownBound) {
+  window._flashcardsKeydownBound = true;
+  window.addEventListener('keydown', (e) => {
+    const playerPanel = document.getElementById('flashcards-panel-player');
+    if (!playerPanel || playerPanel.style.display === 'none') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      window.nextFlashcard();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      window.prevFlashcard();
+    } else if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      window.flipActiveCard();
+    } else if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      window.speakActiveWord();
+    } else if (e.key === '1') {
+      window.submitFlashcardSRS(0);
+    } else if (e.key === '2') {
+      window.submitFlashcardSRS(2);
+    } else if (e.key === '3') {
+      window.submitFlashcardSRS(3);
+    } else if (e.key === '4') {
+      window.submitFlashcardSRS(5);
+    }
+  });
+}
+
 
 window.loadFlashcardStats = async () => {
   try {

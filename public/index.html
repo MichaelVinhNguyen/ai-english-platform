@@ -7,7 +7,7 @@
   <meta name="description" content="Nền tảng học tiếng Anh thông minh với AI Gemini. Luyện nói, viết, nghe, đọc cùng AI Teacher.">
   <meta name="theme-color" content="#7c3aed">
   <link rel="icon" type="image/jpeg" href="/assets/vihtech_logo.jpg?v=2026_v101_bulletproof">
-  <link rel="stylesheet" href="/css/main.css?v=2026_v101_bulletproof">
+  <link rel="stylesheet" href="/css/main.css?v=2026_v103_flashcards_50">
   <!-- Three.js for 3D AI Teacher Avatar -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -278,92 +278,168 @@
 
 <!-- ═══════════════ AUTH PAGE ═══════════════ -->
 <div id="auth-page" class="auth-page" style="display:none">
-  <div class="auth-wrapper-split">
-    <!-- LEFT 3D HERO SHOWCASE -->
-    <div class="auth-hero-showcase">
-      <div class="auth-hero-img-container">
-        <img src="/assets/login_hero_3d.jpg" alt="VihTech AI English Academy 3D" class="auth-hero-img">
-        <div class="auth-hero-overlay"></div>
+  <div class="auth-container-center">
+    <div class="auth-wrapper-split">
+      <!-- LEFT 3D/4D HERO SHOWCASE -->
+      <div class="auth-hero-showcase">
+        <!-- 4D Background Ambiance -->
+        <div class="auth-hero-ambient-fx">
+          <div class="auth-hero-glow-orb orb-1"></div>
+          <div class="auth-hero-glow-orb orb-2"></div>
+        </div>
+
+        <div class="auth-hero-inner">
+          <!-- Top Badge & Header -->
+          <div class="auth-hero-header">
+            <div class="auth-hero-badge">
+              <span class="badge-dot-live"></span>
+              <span>🎓 GLOBAL AI ENGLISH ACADEMY 2026</span>
+            </div>
+            <h2 class="auth-hero-title">Đột Phá Ngoại Ngữ Chuẩn Quốc Tế Cùng AI</h2>
+          </div>
+
+          <!-- 4D Character Hologram Stage with Live Animations -->
+          <div class="auth-4d-hero-stage" id="auth-4d-hero-stage">
+            <!-- 4D Holographic Orbit Pedestal Rings -->
+            <div class="hologram-pedestal-ring ring-1"></div>
+            <div class="hologram-pedestal-ring ring-2"></div>
+
+            <!-- 4D Floating Card with the new 4D Masterpiece Image -->
+            <div class="auth-4d-card-levitate">
+              <div class="auth-4d-sheen-sweep"></div>
+              <img src="/assets/login_hero_4d.jpg" alt="4D Futuristic AI English Tutor" class="auth-hero-4d-img">
+              
+              <!-- Animated 4D Floating Holographic Micro-Badges -->
+              <div class="auth-4d-chip chip-1">
+                <span class="chip-icon">🤖</span>
+                <div class="chip-text-group">
+                  <span class="chip-title">AI Gemini 2.0</span>
+                  <span class="chip-desc">Gia sư 4D Live</span>
+                </div>
+              </div>
+
+              <div class="auth-4d-chip chip-2">
+                <span class="chip-icon">🎙️</span>
+                <div class="chip-text-group">
+                  <span class="chip-title">Realtime Voice</span>
+                  <span class="chip-desc">Chuẩn Native 100%</span>
+                </div>
+              </div>
+
+              <div class="auth-4d-chip chip-3">
+                <span class="chip-icon">⚡</span>
+                <div class="chip-text-group">
+                  <span class="chip-title">IELTS 8.0+ / TOEIC</span>
+                  <span class="chip-desc">Lộ trình đột phá</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Description & Feature Tags -->
+          <div class="auth-hero-footer-content">
+            <p class="auth-hero-sub">
+              Lộ trình CEFR A1-C2 chuẩn Cambridge & Oxford kết hợp trí tuệ nhân tạo nhận diện giọng nói và gia sư 4D thông minh.
+            </p>
+            <div class="auth-feature-tags">
+              <span class="auth-tag">🤖 AI 4D Tutor</span>
+              <span class="auth-tag">🎙️ Realtime Voice AI</span>
+              <span class="auth-tag">📊 Adaptive Learning</span>
+              <span class="auth-tag">📜 Chứng Chỉ Quốc Tế</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="auth-hero-content">
-        <div class="auth-hero-badge">🎓 GLOBAL AI ENGLISH ACADEMY 2026</div>
-        <h2 class="auth-hero-title">Đột Phá Ngoại Ngữ Chuẩn Quốc Tế Cùng AI</h2>
-        <p class="auth-hero-sub">
-          Lộ trình tinh gọn CEFR A1-C2, Cambridge, Oxford, TOEIC 900+ & IELTS 8.0+ kết hợp trí tuệ nhân tạo nhận diện giọng nói và gia sư 3D thông minh.
-        </p>
-        <div class="auth-feature-tags">
-          <span class="auth-tag">🤖 AI 3D Tutor</span>
-          <span class="auth-tag">🎙️ Realtime Voice AI</span>
-          <span class="auth-tag">📊 Adaptive Learning</span>
-          <span class="auth-tag">📜 Chứng Chỉ Quốc Tế</span>
+
+      <!-- RIGHT LOGIN CARD (QUICK EMAIL & ADMIN MODES) -->
+      <div class="auth-card">
+        <div class="auth-logo">
+          <img src="/assets/vihtech_logo.jpg" alt="VihTech Logo" class="auth-logo-img">
+          <h1>VIHTECH AI ACADEMY</h1>
+          <p>Học Tiếng Anh Thông Minh • Chuẩn Khảo Thí Quốc Tế</p>
+        </div>
+
+        <!-- MODE 1: QUICK EMAIL LOGIN (NO REGISTRATION REQUIRED) -->
+        <div id="quick-email-section">
+          <div style="background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(6,182,212,0.12)); border: 1.5px solid rgba(168,85,247,0.4); border-radius: 14px; padding: 14px; margin-bottom: 18px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 800; color: #38bdf8; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>✨</span> VÀO HỌC NHANH BẰNG EMAIL
+            </div>
+            <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.4;">
+              Không cần đăng ký phức tạp. Hệ thống tự động nhận diện và bảo lưu tiến trình theo Email của bạn!
+            </div>
+          </div>
+
+          <form id="quick-email-form" autocomplete="off">
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" style="font-weight: 700; color: #e2e8f0; font-size: 13px;">📧 Nhập Email của bạn</label>
+              <input type="email" id="quick-email-input" class="form-control" placeholder="Nhập địa chỉ email của bạn..." required autocomplete="off" style="background: rgba(15,23,42,0.85); border: 1.5px solid rgba(168,85,247,0.5); color: #fff; font-size: 14px; padding: 12px 14px; border-radius: 12px;">
+            </div>
+            
+            <button type="submit" id="quick-email-btn" class="btn btn-primary btn-full btn-lg" style="font-weight: 900; font-size: 15px; padding: 13px; border-radius: 12px; background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #06b6d4 100%); box-shadow: 0 4px 20px rgba(124,58,237,0.5); border: none; letter-spacing: 0.5px;">
+              🚀 BẮT ĐẦU VÀO HỌC NGAY
+            </button>
+          </form>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 22px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,0.12); font-size: 12.5px;">
+            <span style="color: #64748b;">Dành cho Ban Quản Trị?</span>
+            <a id="btn-show-admin-login" style="color: #f59e0b; cursor: pointer; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+              🛡️ Đăng nhập Quản Trị
+            </a>
+          </div>
+        </div>
+
+        <!-- MODE 2: ADMIN PASSWORD LOGIN -->
+        <div id="admin-login-section" style="display: none;">
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; text-align: center;">
+            <div style="font-size: 13px; font-weight: 800; color: #fbbf24; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>🛡️</span> CỔNG QUẢN TRỊ VIÊN (CMS ADMIN)
+            </div>
+          </div>
+
+          <form id="admin-login-form" autocomplete="off">
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label" style="font-size: 12.5px; color: #cbd5e1;">Email / Tên đăng nhập Admin</label>
+              <input type="text" id="admin-login-email" class="form-control" placeholder="Nhập email hoặc username quản trị..." required autocomplete="off" style="background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 13.5px; padding: 10px 12px; border-radius: 10px;">
+            </div>
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" style="font-size: 12.5px; color: #cbd5e1;">Mật khẩu Quản trị</label>
+              <input type="password" id="admin-login-password" class="form-control" placeholder="Nhập mật khẩu..." required autocomplete="new-password" style="background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 13.5px; padding: 10px 12px; border-radius: 10px;">
+            </div>
+            <button type="submit" id="admin-login-btn" class="btn btn-full btn-lg" style="font-weight: 900; font-size: 14px; padding: 12px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 4px 15px rgba(245,158,11,0.4); border: none;">
+              🔑 Đăng Nhập Quản Trị
+            </button>
+          </form>
+
+          <div style="text-align: center; margin-top: 18px; font-size: 12.5px;">
+            <a id="btn-back-to-quick-login" style="color: #38bdf8; cursor: pointer; font-weight: 700;">
+              ⬅️ Quay lại Chế độ Học viên Nhanh
+            </a>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT LOGIN CARD (QUICK EMAIL & ADMIN MODES) -->
-    <div class="auth-card">
-      <div class="auth-logo">
-        <img src="/assets/vihtech_logo.jpg" alt="VihTech Logo" class="auth-logo-img">
-        <h1>VIHTECH AI ACADEMY</h1>
-        <p>Học Tiếng Anh Thông Minh • Chuẩn Khảo Thí Quốc Tế</p>
-      </div>
-
-      <!-- MODE 1: QUICK EMAIL LOGIN (NO REGISTRATION REQUIRED) -->
-      <div id="quick-email-section">
-        <div style="background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(6,182,212,0.12)); border: 1.5px solid rgba(168,85,247,0.4); border-radius: 14px; padding: 14px; margin-bottom: 18px; text-align: center;">
-          <div style="font-size: 13px; font-weight: 800; color: #38bdf8; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <span>✨</span> VÀO HỌC NHANH BẰNG EMAIL
+    <!-- 4D HORIZONTAL CREDIT BANNER (OUTSIDE LOGIN SCREEN) -->
+    <div class="auth-footer-4d-wrapper">
+      <div class="vihtech-credit-4d-banner">
+        <div class="vihtech-4d-ambient-glow"></div>
+        <div class="vihtech-4d-light-sweep"></div>
+        <div class="vihtech-4d-content-row">
+          <div class="vihtech-4d-badge">
+            <span class="vihtech-4d-badge-icon">⚡</span>
+            <span class="vihtech-4d-badge-text">VIHTECH 2026</span>
           </div>
-          <div style="font-size: 11.5px; color: #94a3b8; line-height: 1.4;">
-            Không cần đăng ký phức tạp. Hệ thống tự động nhận diện và bảo lưu tiến trình theo Email của bạn!
+          <div class="vihtech-4d-sep"></div>
+          <div class="vihtech-4d-author-block">
+            <span class="vihtech-4d-by">DEVELOPMENT BY</span>
+            <span class="vihtech-4d-name">QuangVinh Nguyen</span>
           </div>
-        </div>
-
-        <form id="quick-email-form" autocomplete="off">
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="font-weight: 700; color: #e2e8f0; font-size: 13px;">📧 Nhập Email của bạn</label>
-            <input type="email" id="quick-email-input" class="form-control" placeholder="Nhập địa chỉ email của bạn..." required autocomplete="off" style="background: rgba(15,23,42,0.85); border: 1.5px solid rgba(168,85,247,0.5); color: #fff; font-size: 14px; padding: 12px 14px; border-radius: 12px;">
+          <div class="vihtech-4d-sep"></div>
+          <div class="vihtech-4d-meta-block">
+            <span class="vihtech-4d-meta-sparkle">✦</span>
+            <span class="vihtech-4d-meta-text">@ 2026 • AI English Academy</span>
           </div>
-          
-          <button type="submit" id="quick-email-btn" class="btn btn-primary btn-full btn-lg" style="font-weight: 900; font-size: 15px; padding: 13px; border-radius: 12px; background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #06b6d4 100%); box-shadow: 0 4px 20px rgba(124,58,237,0.5); border: none; letter-spacing: 0.5px;">
-            🚀 BẮT ĐẦU VÀO HỌC NGAY
-          </button>
-        </form>
-
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 22px; padding-top: 16px; border-top: 1px dashed rgba(255,255,255,0.12); font-size: 12.5px;">
-          <span style="color: #64748b;">Dành cho Ban Quản Trị?</span>
-          <a id="btn-show-admin-login" style="color: #f59e0b; cursor: pointer; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
-            🛡️ Đăng nhập Quản Trị
-          </a>
-        </div>
-      </div>
-
-      <!-- MODE 2: ADMIN PASSWORD LOGIN -->
-      <div id="admin-login-section" style="display: none;">
-        <div style="background: rgba(245, 158, 11, 0.1); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; text-align: center;">
-          <div style="font-size: 13px; font-weight: 800; color: #fbbf24; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <span>🛡️</span> CỔNG QUẢN TRỊ VIÊN (CMS ADMIN)
-          </div>
-        </div>
-
-        <form id="admin-login-form" autocomplete="off">
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label class="form-label" style="font-size: 12.5px; color: #cbd5e1;">Email / Tên đăng nhập Admin</label>
-            <input type="text" id="admin-login-email" class="form-control" placeholder="Nhập email hoặc username quản trị..." required autocomplete="off" style="background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 13.5px; padding: 10px 12px; border-radius: 10px;">
-          </div>
-          <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label" style="font-size: 12.5px; color: #cbd5e1;">Mật khẩu Quản trị</label>
-            <input type="password" id="admin-login-password" class="form-control" placeholder="Nhập mật khẩu..." required autocomplete="new-password" style="background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 13.5px; padding: 10px 12px; border-radius: 10px;">
-          </div>
-          <button type="submit" id="admin-login-btn" class="btn btn-full btn-lg" style="font-weight: 900; font-size: 14px; padding: 12px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 4px 15px rgba(245,158,11,0.4); border: none;">
-            🔑 Đăng Nhập Quản Trị
-          </button>
-        </form>
-
-        <div style="text-align: center; margin-top: 18px; font-size: 12.5px;">
-          <a id="btn-back-to-quick-login" style="color: #38bdf8; cursor: pointer; font-weight: 700;">
-            ⬅️ Quay lại Chế độ Học viên Nhanh
-          </a>
         </div>
       </div>
     </div>
@@ -412,39 +488,39 @@
     </div>
 
     <div class="nav-section">
-      <div class="nav-section-title">TỔNG QUAN</div>
+      <div class="nav-section-title">TỔNG QUAN & LỘ TRÌNH</div>
       <div class="nav-item active" data-view="dashboard">
         <span class="nav-icon">🏠</span> Tổng quan
+      </div>
+      <div class="nav-item" data-view="levelCurriculum" style="background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(124,58,237,0.15)); border: 1px solid rgba(236,72,153,0.4); font-weight: 700;">
+        <span class="nav-icon">🎯</span> Học theo cấp độ & Luyện đề
+        <span class="nav-badge" style="background:linear-gradient(135deg,#ec4899,#7c3aed);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px">A1-C2/IELTS</span>
+      </div>
+      <div class="nav-item" data-view="learningPath" style="background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.1)); border: 1px solid rgba(124,58,237,0.3); font-weight: 700;">
+        <span class="nav-icon">🗺️</span> Lộ trình học
+        <span class="nav-badge" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px">CEFR</span>
+      </div>
+      <div class="nav-item" data-view="teacher">
+        <span class="nav-icon">🤖</span> Giáo viên AI 3D
+      </div>
+      <div class="nav-item" data-view="courses">
+        <span class="nav-icon">🎓</span> Khóa học
       </div>
     </div>
 
     <div class="nav-section">
       <div class="nav-section-title">HỌC TẬP CHÍNH</div>
-      <div class="nav-item" data-view="levelCurriculum" style="background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(124,58,237,0.15)); border: 1px solid rgba(236,72,153,0.4); font-weight: 700;">
-        <span class="nav-icon">🎯</span> Học Theo Cấp Độ & Luyện Đề
-        <span class="nav-badge" style="background:linear-gradient(135deg,#ec4899,#7c3aed);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px">A1-C2/IELTS</span>
-      </div>
-      <div class="nav-item" data-view="learningPath" style="background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.1)); border: 1px solid rgba(124,58,237,0.3); font-weight: 700;">
-        <span class="nav-icon">🗺️</span> Lộ trình & Kế hoạch
-        <span class="nav-badge" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px">CEFR</span>
-      </div>
-      <div class="nav-item" data-view="courses">
-        <span class="nav-icon">🎓</span> Khóa học A1-C1
-      </div>
-      <div class="nav-item" data-view="teacher">
-        <span class="nav-icon">🤖</span> Giáo viên AI (3D)
-      </div>
       <div class="nav-item" data-view="vocabulary">
-        <span class="nav-icon">📚</span> Từ vựng 10K+
+        <span class="nav-icon">📚</span> Từ vựng
       </div>
       <div class="nav-item" data-view="grammar">
-        <span class="nav-icon">✏️</span> Ngữ pháp A1-C1
+        <span class="nav-icon">✏️</span> Ngữ pháp
       </div>
       <div class="nav-item" data-view="listening">
         <span class="nav-icon">🎧</span> Luyện nghe
       </div>
       <div class="nav-item" data-view="speaking">
-        <span class="nav-icon">🎤</span> Luyện nói AI
+        <span class="nav-icon">🎤</span> Luyện nói
       </div>
       <div class="nav-item" data-view="reading">
         <span class="nav-icon">📖</span> Đọc hiểu
@@ -459,12 +535,20 @@
 
     <div class="nav-section">
       <div class="nav-section-title">LUYỆN TẬP & ĐÁNH GIÁ</div>
-      <div class="nav-item" data-view="quiz" style="font-weight: 600;">
-        <span class="nav-icon">🎯</span> Bài tập & Quiz đa dạng
+      <div class="nav-item" data-view="commonPhrases" style="background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.12)); border: 1px solid rgba(16,185,129,0.35); font-weight: 700;">
+        <span class="nav-icon">💬</span> Câu nói thường gặp
+        <span class="nav-badge" style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:800;">50 Chủ đề</span>
+      </div>
+      <div class="nav-item" data-view="quiz">
+        <span class="nav-icon">🎯</span> Bài tập & Quiz
       </div>
       <div class="nav-item" data-view="flashcards">
-        <span class="nav-icon">🃏</span> Flashcards Anki <span class="nav-badge" id="flashcard-badge">0</span>
+        <span class="nav-icon">🃏</span> Flashcard <span class="nav-badge" id="flashcard-badge">0</span>
       </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">HỆ THỐNG</div>
       <div class="nav-item" data-view="admin">
         <span class="nav-icon">🛡️</span> CMS Quản trị & Cài đặt AI
       </div>
@@ -474,15 +558,18 @@
       <button id="logout-btn" class="btn btn-ghost" style="width:100%; justify-content:flex-start; gap:8px; color:#e11d48 !important; font-weight:800; font-size:13.5px; background:rgba(255, 255, 255, 0.85); border:1.5px solid rgba(244, 63, 94, 0.3); border-radius:12px; padding:10px 14px; box-shadow:0 2px 8px rgba(244, 63, 94, 0.08); transition:all 0.2s ease;">
         🚪 Đăng xuất
       </button>
-      <div class="sidebar-credit-box">
-        <div class="credit-badge-glow">
-          <span>⚡</span>
-          <span>VIHTECH 2026</span>
+      <div class="sidebar-credit-box vihtech-4d-sidebar-box">
+        <div class="vihtech-4d-badge" style="transform: scale(0.92); margin-bottom: 4px;">
+          <span class="vihtech-4d-badge-icon">⚡</span>
+          <span class="vihtech-4d-badge-text">VIHTECH 2026</span>
         </div>
-        <div class="credit-author-vip">
-          <div class="author-prefix">Development by</div>
-          <div class="author-name">QuangVinh Nguyen</div>
-          <div class="author-year">@ 2026 • AI English Academy</div>
+        <div class="vihtech-4d-author-block" style="margin-top: 4px;">
+          <span class="vihtech-4d-by">DEVELOPMENT BY</span>
+          <span class="vihtech-4d-name" style="font-size: 13.5px;">QuangVinh Nguyen</span>
+        </div>
+        <div class="vihtech-4d-meta-block" style="margin-top: 3px;">
+          <span class="vihtech-4d-meta-sparkle">✦</span>
+          <span class="vihtech-4d-meta-text" style="font-size: 10.5px;">@ 2026 • AI English Academy</span>
         </div>
       </div>
     </div>
@@ -512,6 +599,30 @@
     <main class="page-content" id="page-content">
       <!-- Views rendered here by JS -->
     </main>
+
+    <!-- 4D HORIZONTAL CREDIT BANNER (MAIN APP BOTTOM CENTER) -->
+    <footer class="app-global-footer-4d">
+      <div class="vihtech-credit-4d-banner">
+        <div class="vihtech-4d-ambient-glow"></div>
+        <div class="vihtech-4d-light-sweep"></div>
+        <div class="vihtech-4d-content-row">
+          <div class="vihtech-4d-badge">
+            <span class="vihtech-4d-badge-icon">⚡</span>
+            <span class="vihtech-4d-badge-text">VIHTECH 2026</span>
+          </div>
+          <div class="vihtech-4d-sep"></div>
+          <div class="vihtech-4d-author-block">
+            <span class="vihtech-4d-by">DEVELOPMENT BY</span>
+            <span class="vihtech-4d-name">QuangVinh Nguyen</span>
+          </div>
+          <div class="vihtech-4d-sep"></div>
+          <div class="vihtech-4d-meta-block">
+            <span class="vihtech-4d-meta-sparkle">✦</span>
+            <span class="vihtech-4d-meta-text">@ 2026 • AI English Academy</span>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>
 </div>
 
@@ -526,10 +637,10 @@
 <div id="toast-container"></div>
 
 <!-- SCRIPTS -->
-<script src="/js/standalone_data.js?v=2026_v101_bulletproof"></script>
-<script src="/js/api.js?v=2026_v101_bulletproof"></script>
-<script src="/js/platform_modules.js?v=2026_v101_bulletproof"></script>
-<script src="/js/toeic_ielts_exam_studio.js?v=2026_v101_bulletproof"></script>
-<script src="/js/app.js?v=2026_v101_bulletproof"></script>
+<script src="/js/standalone_data.js?v=2026_v103_flashcards_50"></script>
+<script src="/js/api.js?v=2026_v103_flashcards_50"></script>
+<script src="/js/platform_modules.js?v=2026_v103_flashcards_50"></script>
+<script src="/js/toeic_ielts_exam_studio.js?v=2026_v103_flashcards_50"></script>
+<script src="/js/app.js?v=2026_v103_flashcards_50"></script>
 </body>
 </html>

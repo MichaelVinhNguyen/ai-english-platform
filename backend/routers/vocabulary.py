@@ -147,7 +147,7 @@ async def get_flashcard_deck(
     if level:
         q = q.where(Vocabulary.level == level)
     if topic:
-        q = q.where(Vocabulary.topic == topic)
+        q = q.where(or_(Vocabulary.topic == topic, Vocabulary.topic.ilike(f"%{topic}%")))
     if search:
         q = q.where(or_(
             Vocabulary.word.ilike(f"%{search}%"),
@@ -160,7 +160,21 @@ async def get_flashcard_deck(
         q = q.order_by(Vocabulary.word.asc())
     
     r = await db.execute(q.limit(limit))
-    vocab_items = r.scalars().all()
+    vocab_items = list(r.scalars().all())
+
+    # Guarantee full limit (50 words) without duplicates
+    if len(vocab_items) < limit:
+        existing_ids = [v.id for v in vocab_items]
+        needed = limit - len(vocab_items)
+        supp_q = select(Vocabulary)
+        if existing_ids:
+            supp_q = supp_q.where(~Vocabulary.id.in_(existing_ids))
+        if level:
+            supp_q = supp_q.where(Vocabulary.level == level)
+        from sqlalchemy.sql.expression import func
+        supp_q = supp_q.order_by(func.random() if shuffle else Vocabulary.word.asc()).limit(needed)
+        supp_r = await db.execute(supp_q)
+        vocab_items.extend(supp_r.scalars().all())
     
     # Get user study stats for these words
     vocab_ids = [v.id for v in vocab_items]

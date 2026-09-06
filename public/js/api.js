@@ -136,30 +136,78 @@ const api = {
     if (path.startsWith('/vocabulary/flashcards/deck')) {
       const fcMap = sd.flashcards || {};
       let topic = null;
+      let level = null;
+      let limit = 50;
       if (path.includes('?')) {
         const params = new URLSearchParams(path.split('?')[1]);
         topic = params.get('topic');
+        level = params.get('level');
+        if (params.get('limit')) limit = parseInt(params.get('limit'), 10) || 50;
       }
       let cards = [];
       if (topic && fcMap[topic]) {
-        cards = fcMap[topic];
+        cards = [...fcMap[topic]];
       } else if (topic) {
-        const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === topic.toLowerCase());
-        if (matchKey) cards = fcMap[matchKey];
+        const matchKey = Object.keys(fcMap).find(k => k.toLowerCase() === topic.toLowerCase() || k.toLowerCase().includes(topic.toLowerCase()) || topic.toLowerCase().includes(k.toLowerCase()));
+        if (matchKey) cards = [...fcMap[matchKey]];
+      } else if (level) {
+        const pool = (sd.vocabularies || []);
+        cards = pool.filter(w => (w.level || '').toUpperCase() === level.toUpperCase());
+        if (cards.length < limit) {
+          Object.values(fcMap).forEach(arr => {
+            arr.forEach(c => {
+              if ((c.level || '').toUpperCase() === level.toUpperCase() && !cards.some(x => (x.word || '').toLowerCase() === (c.word || '').toLowerCase())) {
+                cards.push(c);
+              }
+            });
+          });
+        }
       }
-      if (!cards.length) {
-        cards = Object.values(fcMap)[0] || [];
+
+      // Guarantee 50 distinct items without duplicates
+      if (cards.length < limit) {
+        const allCards = [];
+        Object.values(fcMap).forEach(arr => allCards.push(...arr));
+        for (const ac of allCards) {
+          if (!cards.some(c => (c.word || '').toLowerCase() === (ac.word || '').toLowerCase())) {
+            cards.push(ac);
+            if (cards.length >= limit) break;
+          }
+        }
       }
+
+      cards = cards.slice(0, limit);
       return { total: cards.length, cards };
     }
     if (path.startsWith('/vocabulary/topics')) {
       return { topics: ['Daily Life & Routines', 'Food, Cooking & Dining', 'Travel & Tourism', 'Technology & AI', 'Business & Career', 'Health & Wellness', 'Education & Science', 'Entertainment & Arts', 'Sports & Fitness', 'Environment & Nature'] };
     }
     if (path === '/vocabulary/' || path.startsWith('/vocabulary/?') || path.startsWith('/vocabulary/search') || path.startsWith('/vocabulary/list') || path.startsWith('/vocabulary/explore')) {
-      const allWords = [];
-      const fcMap = sd.flashcards || {};
-      Object.values(fcMap).forEach(arr => allWords.push(...arr));
-      return allWords.slice(0, 100);
+      let pool = (sd.vocabularies && sd.vocabularies.length) ? sd.vocabularies : [];
+      if (!pool.length) {
+        const fcMap = sd.flashcards || {};
+        Object.values(fcMap).forEach(arr => pool.push(...arr));
+      }
+      let params = {};
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        usp.forEach((v, k) => { params[k] = v; });
+      }
+      let filtered = pool;
+      if (params.letter) {
+        filtered = filtered.filter(w => (w.word || '').toUpperCase().startsWith(params.letter.toUpperCase()));
+      }
+      if (params.level) {
+        filtered = filtered.filter(w => w.level === params.level);
+      }
+      if (params.topic) {
+        filtered = filtered.filter(w => (w.topic || '').toLowerCase().includes(params.topic.toLowerCase()));
+      }
+      if (params.search) {
+        const q = params.search.toLowerCase();
+        filtered = pool.filter(w => (w.word || '').toLowerCase().includes(q) || (w.definition_vi || w.meaning || '').toLowerCase().includes(q));
+      }
+      return filtered.slice(0, 300);
     }
 
     // Quizzes
@@ -180,12 +228,42 @@ const api = {
     }
 
     // Grammar, Reading, Listening, Speaking
-    if (path === '/grammar/rules') return sd.grammar_rules || [];
-    if (path === '/reading/articles') return sd.reading_articles || [];
-    if (path === '/listening/exercises' || path === '/listening/lessons') return sd.listening_exercises || [];
+    if (path.startsWith('/grammar/rules')) {
+      let rules = sd.grammar_rules || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) rules = rules.filter(r => r.level === lvl);
+      }
+      return rules;
+    }
+    if (path.startsWith('/reading/articles')) {
+      let articles = sd.reading_articles || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) articles = articles.filter(a => a.level === lvl);
+      }
+      return articles;
+    }
+    if (path.startsWith('/listening/exercises') || path.startsWith('/listening/lessons')) {
+      let exercises = sd.listening_exercises || [];
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const lvl = usp.get('level');
+        if (lvl) exercises = exercises.filter(e => e.level === lvl);
+      }
+      return exercises;
+    }
     if (path.startsWith('/speaking/topics')) {
-      const lvl = 'B1';
-      return { topics: (sd.speaking_topics && sd.speaking_topics[lvl]) || [] };
+      let lvl = 'B1';
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        lvl = usp.get('level') || 'B1';
+      }
+      const stMap = sd.speaking_topics || {};
+      const topics = stMap[lvl] || stMap['B1'] || [];
+      return { level: lvl, topics };
     }
     if (path === '/speaking/evaluate') {
       return { overall_score: 88, fluency: 86, pronunciation: 90, vocabulary: 88, feedback: "Phát âm rất rõ ràng, trọng âm chuẩn xác và ngữ điệu tự nhiên!", xp_earned: 50 };
@@ -204,6 +282,121 @@ const api = {
     }
     if (path === '/translation/translate') {
       return { translated_text: `[Bản dịch] ${data?.text || ""}`, source_lang: "auto", target_lang: "vi" };
+    }
+
+    // Common Phrases (Câu nói thường gặp)
+    const normCPTopic = (t) => {
+      if (!t) return {};
+      return {
+        id: t.id,
+        code: t.code || '',
+        title: t.title || t.name || '',
+        title_vi: t.title_vi || t.name_vi || '',
+        category: t.category || '',
+        category_vi: t.category_vi || '',
+        icon: t.icon || '💬',
+        cartoon: t.cartoon || t.avatar_a || t.icon || '💬',
+        color: t.color || '#10b981',
+        description: t.description || t.desc || '',
+        description_vi: t.description_vi || t.desc || '',
+        phrase_count: t.phrase_count || t.total_phrases || 50
+      };
+    };
+
+    const normCPPhrase = (p) => {
+      if (!p) return {};
+      const cleanPrefix = (str) => (str || '').replace(/^\[.*?\]\s*/, '').trim();
+      const q_raw = p.q_text || p.question_en || (p.speaker_a && p.speaker_a.en) || '';
+      const q_vi_raw = p.q_vi || p.question_vi || (p.speaker_a && p.speaker_a.vi) || '';
+      const a_raw = p.a_text || p.answer_en || (p.speaker_b && p.speaker_b.en) || '';
+      const a_vi_raw = p.a_vi || p.answer_vi || (p.speaker_b && p.speaker_b.vi) || '';
+      const kw = p.key_vocab || (Array.isArray(p.keywords) ? p.keywords.join(', ') : p.keywords) || '';
+
+      return {
+        id: p.id,
+        topic_id: p.topic_id,
+        order_index: p.order_index || 1,
+        situation: p.situation || '',
+        situation_type: p.situation_type || '',
+        q_text: cleanPrefix(q_raw),
+        q_vi: cleanPrefix(q_vi_raw),
+        q_ipa: p.q_ipa || p.question_ipa || (p.speaker_a && p.speaker_a.ipa) || '',
+        q_speaker: p.q_speaker || p.speaker_a_role || (p.speaker_a && p.speaker_a.role) || 'Speaker A',
+        q_avatar: p.q_avatar || p.speaker_a_avatar || (p.speaker_a && p.speaker_a.avatar) || '🙋‍♀️',
+        a_text: cleanPrefix(a_raw),
+        a_vi: cleanPrefix(a_vi_raw),
+        a_ipa: p.a_ipa || p.answer_ipa || (p.speaker_b && p.speaker_b.ipa) || '',
+        a_speaker: p.a_speaker || p.speaker_b_role || (p.speaker_b && p.speaker_b.role) || 'Speaker B',
+        a_avatar: p.a_avatar || p.speaker_b_avatar || (p.speaker_b && p.speaker_b.avatar) || '🙋‍♂️',
+        tips: p.tips || p.tip || '',
+        key_vocab: kw,
+        difficulty: p.difficulty || 'Intermediate'
+      };
+    };
+
+    if (path.startsWith('/common-phrases/categories')) {
+      const topics = (sd.common_phrases_topics || []).map(normCPTopic);
+      const catMap = {};
+      topics.forEach(t => {
+        catMap[t.category] = (catMap[t.category] || 0) + 1;
+      });
+      const categories = Object.keys(catMap).map(c => ({
+        category: c,
+        topic_count: catMap[c],
+        phrase_count: catMap[c] * 50
+      }));
+      return { categories, total_categories: categories.length };
+    }
+    if (path.startsWith('/common-phrases/topics')) {
+      let topics = (sd.common_phrases_topics || []).map(normCPTopic);
+      if (path.includes('?')) {
+        const usp = new URLSearchParams(path.split('?')[1]);
+        const cat = usp.get('category');
+        if (cat && cat.toLowerCase() !== 'all') {
+          topics = topics.filter(t => t.category.toLowerCase() === cat.toLowerCase() || (t.category_vi && t.category_vi.toLowerCase() === cat.toLowerCase()));
+        }
+      }
+      return { topics, total: topics.length };
+    }
+    if (path.startsWith('/common-phrases/topic/')) {
+      const topicId = path.split('/').pop().split('?')[0];
+      const topics = (sd.common_phrases_topics || []).map(normCPTopic);
+      const topic = topics.find(t => String(t.id) === String(topicId)) || topics[0] || {};
+      const phrasesMap = sd.common_phrases || {};
+      const rawPhrases = phrasesMap[String(topicId)] || phrasesMap[String(topic.id)] || [];
+      const phrases = rawPhrases.map(normCPPhrase);
+      return { topic, phrases, total_phrases: phrases.length };
+    }
+    if (path.startsWith('/common-phrases/search')) {
+      const usp = new URLSearchParams(path.split('?')[1] || '');
+      const q = (usp.get('q') || '').toLowerCase();
+      const phrasesMap = sd.common_phrases || {};
+      const topics = (sd.common_phrases_topics || []).map(normCPTopic);
+      const topicMap = {};
+      topics.forEach(t => { topicMap[String(t.id)] = t; });
+      let results = [];
+      Object.keys(phrasesMap).forEach(tid => {
+        const t = topicMap[tid] || {};
+        (phrasesMap[tid] || []).forEach(rawP => {
+          const p = normCPPhrase(rawP);
+          if (
+            (p.q_text && p.q_text.toLowerCase().includes(q)) ||
+            (p.q_vi && p.q_vi.toLowerCase().includes(q)) ||
+            (p.a_text && p.a_text.toLowerCase().includes(q)) ||
+            (p.a_vi && p.a_vi.toLowerCase().includes(q)) ||
+            (p.key_vocab && p.key_vocab.toLowerCase().includes(q))
+          ) {
+            results.push({
+              ...p,
+              topic_title: t.title,
+              topic_title_vi: t.title_vi,
+              topic_icon: t.icon,
+              topic_cartoon: t.cartoon
+            });
+          }
+        });
+      });
+      return { query: q, results: results.slice(0, 100), total: results.length };
     }
 
     return undefined;
@@ -391,5 +584,13 @@ const api = {
     deleteAIProfile:   (id) => api.delete(`/admin/ai-profiles/${id}`),
     activateAIProfile: (id) => api.post(`/admin/ai-profiles/${id}/activate`),
     testAIConnection:  (d) => api.post('/admin/test-ai-connection', d),
+  },
+
+  // ── COMMON PHRASES (CÂU NÓI THƯỜNG GẶP) ───────────────────────
+  commonPhrases: {
+    getCategories: () => api.get('/common-phrases/categories'),
+    getTopics:     (cat) => api.get(`/common-phrases/topics${cat ? '?category='+encodeURIComponent(cat) : ''}`),
+    getTopic:      (id) => api.get(`/common-phrases/topic/${id}`),
+    search:        (q) => api.get(`/common-phrases/search?q=${encodeURIComponent(q)}`),
   },
 };
